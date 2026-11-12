@@ -32,3 +32,16 @@
   and redoes the lane build when the enemy duo in your lane changes.
 - Item stats are confounded by the matchup itself. `engine.score_items` subtracts the context offset;
   keep that when changing the scoring.
+
+## In-game build share codes (verified in game, 2026-11-12)
+- Hero Builds editor has "Copiar para a área de transferência" / "Colar guia": the text is
+  base64(zstd(protobuf CMsgHeroBuild)). `gamebuild.py` writes it with uncompressed zstd blocks
+  (no zstd in the 3.12 stdlib) and the game accepts that. Field map is in its docstring.
+- "Colar guia" silently drops a build without header fields 1, 3, 4, 9 and 13 (it pastes an
+  empty category). Categories need width/height or the box hides the items. There is no box
+  position: boxes flow left to right, so full-row width (900) stacks them vertically.
+- Names like `#Citadel_HeroBuilds_MidGame` are localized by the game. Ability order is a list of
+  currency changes: type 2 unlocks an ability, type 1 buys an upgrade at 1/2/5 points.
+- To decode a code the game copied, Node 22+ has `zlib.zstdDecompressSync`.
+- Never hand-retype a share code in chat: one typo makes the game reject it. Put it on the
+  clipboard from the program (`clipboard.set_text`).
