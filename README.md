@@ -41,12 +41,12 @@ Por que não ler os heróis direto do jogo? Porque o Deadlock não expõe essa i
 1. **Ative o log do jogo.** Na Steam: Deadlock → Propriedades → Opções de inicialização → adicione `-condebug`.
 2. **Use janela sem bordas.** No jogo, coloque o modo de tela em *Janela sem bordas* (Borderless). Em tela cheia, o overlay não aparece por cima.
 3. **Baixe o app.** `git clone` este repositório ou baixe o ZIP (botão *Code* → *Download ZIP*).
-4. **Aponte para o jogo.** Se o Deadlock **não** estiver em `D:\SteamLibrary\steamapps\common\Deadlock`, copie `config.example.json` para `config.json` e ajuste o `game_dir`.
+4. **Pronto, não precisa configurar nada.** O app acha a pasta do jogo e a sua conta pelas bibliotecas da Steam, e avisa se faltar o `-condebug`.
 5. **Rode** `run.bat` (ou, no PowerShell: `$env:PYTHONPATH="src"; python -m deadlock_advisor`).
 6. **Entre numa partida.** O status muda para "Partida encontrada" e a build aparece logo em seguida.
 
 > [!TIP]
-> Não sabe onde o jogo está instalado? Na Steam: Deadlock → Propriedades → Arquivos instalados → **Procurar**. Copie o caminho da pasta que abrir.
+> Se a detecção falhar (ex.: Steam instalada num lugar incomum), defina `game_dir` no `config.json`. Para achar a pasta, na Steam: Deadlock → Propriedades → Arquivos instalados → **Procurar**.
 
 ## Uso
 
@@ -68,8 +68,8 @@ Todas as opções são opcionais. Copie `config.example.json` para `config.json`
 
 | Campo | Padrão | Para quê |
 |---|---|---|
-| `game_dir` | `D:\SteamLibrary\steamapps\common\Deadlock` | pasta de instalação do jogo |
-| `account_id` | detectado | seu SteamID3, caso a detecção automática falhe |
+| `game_dir` | detectado pela Steam | pasta de instalação do jogo |
+| `account_id` | detectado pela Steam | seu SteamID3, caso a detecção automática falhe |
 | `api_key` | — | chave opcional da deadlock-api. Sem ela, o limite é de ~6 partidas espectadas por hora. Também pode vir da variável `DEADLOCK_API_KEY`. |
 | `port` | `8787` | porta da página web local |
 | `overlay` | `true` | liga ou desliga o overlay |
@@ -101,7 +101,7 @@ console.log  ──(match_id=...)──►  watcher  ──►  deadlock-api liv
 
 | Sintoma | Causa provável |
 |---|---|
-| "console.log não encontrado em …" | Falta o `-condebug` nas opções de inicialização, ou o `game_dir` está errado. Confira se existe `game\citadel\console.log` dentro da pasta do jogo. |
+| "Falta -condebug nas opções de inicialização" ou "console.log não encontrado em …" | Falta o `-condebug` nas opções de inicialização, ou o `game_dir` está errado. Confira se existe `game\citadel\console.log` dentro da pasta do jogo. |
 | O status nunca sai de "Aguardando partida…" | O jogo foi aberto sem `-condebug`. Feche o Deadlock, adicione a opção e abra de novo. |
 | "account_id não detectado" ou "Sua conta não foi encontrada nesta partida" | Defina o seu SteamID3 em `account_id` no `config.json`. |
 | Erro ao ler os jogadores depois de várias partidas seguidas | Sem chave, a deadlock-api deixa espectar ~6 partidas por hora. Espere ou configure uma `api_key`. Enquanto isso, use o modo manual. |
@@ -138,7 +138,6 @@ Contribuições são bem-vindas: abra uma *issue* com bugs ou ideias, ou mande u
 - [ ] Recomendar a ordem de habilidades (`/v1/analytics/ability-order-stats`).
 - [ ] Atalho global para mostrar ou esconder o overlay.
 - [ ] Exportar a build para o formato de Hero Builds do jogo.
-- [ ] Detectar automaticamente a pasta do jogo pelas bibliotecas da Steam.
 
 ## Créditos
 

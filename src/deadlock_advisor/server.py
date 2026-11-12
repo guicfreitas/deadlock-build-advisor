@@ -40,6 +40,10 @@ def make_handler(advisor: Advisor):
                 return self._send(200, (web / name).read_bytes(), ctype)
             if path == "/api/state":
                 return self._json(advisor.state.snapshot())
+            if path == "/api/setup":  # re-run on demand, e.g. after the user fixes Steam
+                check = advisor.setup_check()
+                advisor.state.update(setup=check)
+                return self._json(check)
             if path == "/api/heroes":
                 try:
                     cat = advisor.catalog

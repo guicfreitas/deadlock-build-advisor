@@ -7,6 +7,7 @@ import traceback
 from dataclasses import fields
 from pathlib import Path
 
+from . import steam
 from .api import DeadlockApi
 from .config import Config
 from .engine import Catalog, EngineConfig, Recommender
@@ -64,9 +65,21 @@ class Advisor:
         return Recommender(self.api, self.catalog, self.engine_cfg)
 
     # ------------------------------------------------------------ lifecycle
+    def setup_check(self) -> dict:
+        return steam.check_setup(self.cfg.detect_game_dir() or None, self.cfg.detect_account_id()).as_dict()
+
     def start_watcher(self) -> None:
         log = self.cfg.console_log
-        if not log.exists():
+        check = self.setup_check()
+        self.state.update(setup=check)
+        if not check["game_dir"]:
+            self.state.update(status="setup", message=(
+                "Não encontrei o Deadlock nas bibliotecas da Steam. Defina game_dir em config.json."))
+        elif check["condebug"] is False:
+            self.state.update(status="setup", message=(
+                "Falta -condebug nas opções de inicialização do Deadlock na Steam. Adicione e "
+                "reabra o jogo."))
+        elif not log.exists():
             self.state.update(status="setup", message=(
                 f"console.log não encontrado em {log}. Adicione -condebug nas opções de "
                 "inicialização do Deadlock na Steam."))
