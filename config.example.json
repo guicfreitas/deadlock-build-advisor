@@ -1,0 +1,13 @@
+{
+  "game_dir": "D:\\SteamLibrary\\steamapps\\common\\Deadlock",
+  "account_id": null,
+  "api_key": null,
+  "port": 8787,
+  "overlay": true,
+  "overlay_alpha": 0.88,
+  "engine": {
+    "lane_window_s": 600,
+    "lane_budget": 5600,
+    "filters": {}
+  }
+}

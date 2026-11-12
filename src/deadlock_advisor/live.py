@@ -1,0 +1,151 @@
+"""Discover who is in the user's live match (heroes, teams, lanes).
+
+Strategy:
+1. /v1/matches/active?account_id=...  (cheap, but only covers the top ~200 matches)
+2. /v1/matches/demo/live/query         (deadlock-api spectates the match and runs SQL
+   over the live broadcast). Works for any match, rate-limited to ~6 spectates/hour
+   without an API key -> one per match is plenty.
+"""
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass, asdict
+from typing import Callable
+
+from .api import ApiError, DeadlockApi
+
+STEAM64_BASE = 76561197960265728
+
+ROSTER_SQL = (
+    'SELECT tick, "m_steamID", "m_iTeamNum", "m_nAssignedLane", '
+    '"m_PlayerDataGlobal__m_nHeroID" AS hero_id '
+    "FROM CCitadelPlayerController "
+    'WHERE "m_PlayerDataGlobal__m_nHeroID" > 0'
+)
+
+
+@dataclass
+class Player:
+    account_id: int
+    hero_id: int
+    team: int
+    lane: int | None = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class Roster:
+    match_id: int
+    players: list[Player]
+    me: Player
+
+    @property
+    def enemies(self) -> list[Player]:
+        return [p for p in self.players if p.team != self.me.team]
+
+    @property
+    def allies(self) -> list[Player]:
+        return [p for p in self.players if p.team == self.me.team and p.account_id != self.me.account_id]
+
+    @property
+    def lane_enemies(self) -> list[Player]:
+        if self.me.lane is None:
+            return []
+        return [p for p in self.enemies if p.lane == self.me.lane]
+
+    @property
+    def lane_ally(self) -> list[Player]:
+        if self.me.lane is None:
+            return []
+        return [p for p in self.allies if p.lane == self.me.lane]
+
+
+def _build_roster(match_id: int, players: list[Player], account_id: int) -> Roster:
+    me = next((p for p in players if p.account_id == account_id), None)
+    if me is None:
+        raise ApiError("Sua conta não foi encontrada nesta partida (confira account_id no config).")
+    return Roster(match_id, players, me)
+
+
+def roster_from_active(api: DeadlockApi, match_id: int, account_id: int) -> Roster | None:
+    try:
+        matches = api.active_matches(account_id)
+    except ApiError:
+        return None
+    for m in matches:
+        if int(m.get("match_id", 0)) != match_id:
+            continue
+        players = [
+            Player(int(p["account_id"]), int(p["hero_id"]), int(p["team"]), None)
+            for p in m.get("players", []) if p.get("hero_id")
+        ]
+        try:
+            return _build_roster(match_id, players, account_id)
+        except ApiError:
+            return None
+    return None
+
+
+def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
+                          on_status: Callable[[str], None] = lambda s: None,
+                          settle_s: float = 4.0, timeout_s: float = 120) -> Roster:
+    latest: dict[int, Player] = {}
+    complete_at: float | None = None
+    started = time.time()
+    for event, data in api.stream_sse("/v1/matches/demo/live/query",
+                                      {"match_id": match_id, "query": ROSTER_SQL}, timeout=timeout_s):
+        if event == "status":
+            on_status(data.get("message", "") if isinstance(data, dict) else str(data))
+        elif event == "error":
+            msg = data.get("error") if isinstance(data, dict) else str(data)
+            raise ApiError(msg or "erro no live query")
+        elif event == "end":
+            break
+        elif isinstance(data, dict) and "m_steamID" in data:
+            sid = int(data["m_steamID"] or 0)
+            if sid <= STEAM64_BASE:
+                continue
+            lane = data.get("m_nAssignedLane")
+            latest[sid - STEAM64_BASE] = Player(
+                sid - STEAM64_BASE, int(data["hero_id"]), int(data["m_iTeamNum"]),
+                int(lane) if lane else None)
+            if len(latest) >= 12 and all(p.lane for p in latest.values()) and complete_at is None:
+                complete_at = time.time()
+        if complete_at and time.time() - complete_at > settle_s:
+            break  # keep reading a few seconds so lane swaps settle
+        if time.time() - started > timeout_s:
+            break
+    if not latest:
+        raise ApiError("Broadcast sem jogadores ainda.")
+    # convert team numbers 2/3 -> 0/1 to match the stats API convention
+    players = [Player(p.account_id, p.hero_id, p.team - 2 if p.team >= 2 else p.team, p.lane)
+               for p in latest.values()]
+    return _build_roster(match_id, players, account_id)
+
+
+def fetch_roster(api: DeadlockApi, match_id: int, account_id: int,
+                 on_status: Callable[[str], None] = lambda s: None,
+                 max_wait_s: float = 600) -> Roster:
+    """Try cheap path first, then the live broadcast, retrying while the match warms up."""
+    deadline = time.time() + max_wait_s
+    attempt = 0
+    last_err: Exception | None = None
+    while time.time() < deadline:
+        attempt += 1
+        active = roster_from_active(api, match_id, account_id)
+        if active and len(active.players) >= 12:
+            on_status("Jogadores encontrados na lista de partidas ativas.")
+            # active list has no lanes; still try broadcast for lanes, but keep this as fallback
+            try:
+                return roster_from_broadcast(api, match_id, account_id, on_status)
+            except ApiError:
+                return active
+        try:
+            return roster_from_broadcast(api, match_id, account_id, on_status)
+        except ApiError as e:
+            last_err = e
+            on_status(f"Tentativa {attempt}: {e} — tentando de novo em breve…")
+            time.sleep(min(60, 15 * attempt))
+    raise ApiError(f"Não foi possível ler os jogadores da partida: {last_err}")

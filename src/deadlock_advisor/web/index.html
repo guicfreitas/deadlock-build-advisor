@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deadlock Build Advisor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Deadlock Build Advisor</h1>
+    <div id="status" class="status idle"><span class="dot"></span><span id="status-msg">Conectando…</span></div>
+  </header>
+
+  <main>
+    <section id="matchup" class="card hidden">
+      <div class="row">
+        <div id="me" class="hero-big"></div>
+        <div class="vs">VS</div>
+        <div id="lane-enemies" class="hero-list"></div>
+      </div>
+    </section>
+
+    <section id="lane" class="card hidden">
+      <h2>Build de lane <small id="lane-meta"></small></h2>
+      <div id="lane-items" class="items"></div>
+    </section>
+
+    <section id="full" class="card hidden">
+      <h2>Build geral <small>contra o time inimigo inteiro</small></h2>
+      <h3>Mid game</h3><div id="mid-items" class="items"></div>
+      <h3>Late game</h3><div id="late-items" class="items"></div>
+    </section>
+
+    <section id="enemies" class="card hidden">
+      <h2>Adversários <small>win rate do seu herói contra cada um · itens que mais ajudam</small></h2>
+      <div id="enemy-list" class="enemy-grid"></div>
+    </section>
+
+    <section class="card">
+      <details id="manual">
+        <summary>Modo manual (sem partida / se a detecção falhar)</summary>
+        <div class="manual">
+          <label>Seu herói <select id="m-hero"></select></label>
+          <p class="hint">Clique para marcar inimigos. Clique de novo para marcar como <b>inimigo de lane</b>. Terceiro clique remove.</p>
+          <div id="m-grid" class="pick-grid"></div>
+          <button id="m-go">Calcular build</button>
+          <label class="inline">ou match_id <input id="m-match" inputmode="numeric" placeholder="135235741"><button id="m-match-go">Buscar</button></label>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <footer>Dados: deadlock-api.com (últimos 30 dias). Win rate suavizado; “lift” = ganho vs. a média do item para o seu herói.</footer>
+  <script src="/app.js"></script>
+</body>
+</html>
