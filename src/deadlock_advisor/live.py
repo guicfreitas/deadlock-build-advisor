@@ -40,6 +40,7 @@ class Roster:
     match_id: int
     players: list[Player]
     me: Player
+    game_mode: str = "normal"  # "normal" (6v6, 3 lanes) | "street_brawl" (4v4, one lane, lane=0)
 
     @property
     def enemies(self) -> list[Player]:
@@ -62,11 +63,15 @@ class Roster:
         return [p for p in self.allies if p.lane == self.me.lane]
 
 
-def _build_roster(match_id: int, players: list[Player], account_id: int) -> Roster:
+def _build_roster(match_id: int, players: list[Player], account_id: int,
+                  game_mode: str | None = None) -> Roster:
     me = next((p for p in players if p.account_id == account_id), None)
     if me is None:
         raise ApiError("Sua conta não foi encontrada nesta partida (confira account_id no config).")
-    return Roster(match_id, players, me)
+    if game_mode is None:
+        # Street Brawl is 4v4 and reports every lane as 0; normal is 6v6 with lanes 1/4/6.
+        game_mode = "street_brawl" if len(players) <= 8 else "normal"
+    return Roster(match_id, players, me, game_mode)
 
 
 def roster_from_active(api: DeadlockApi, match_id: int, account_id: int) -> Roster | None:
@@ -81,8 +86,9 @@ def roster_from_active(api: DeadlockApi, match_id: int, account_id: int) -> Rost
             Player(int(p["account_id"]), int(p["hero_id"]), int(p["team"]), None)
             for p in m.get("players", []) if p.get("hero_id")
         ]
+        mode = "street_brawl" if m.get("game_mode") == 4 else "normal" if m.get("game_mode") == 1 else None
         try:
-            return _build_roster(match_id, players, account_id)
+            return _build_roster(match_id, players, account_id, mode)
         except ApiError:
             return None
     return None
@@ -93,10 +99,13 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
                           settle_s: float = 4.0, timeout_s: float = 120) -> Roster:
     latest: dict[int, Player] = {}
     complete_at: float | None = None
+    last_new_at = time.time()
     started = time.time()
     for event, data in api.stream_sse("/v1/matches/demo/live/query",
                                       {"match_id": match_id, "query": ROSTER_SQL}, timeout=timeout_s):
-        if event == "status":
+        if event == "ping":
+            pass
+        elif event == "status":
             on_status(data.get("message", "") if isinstance(data, dict) else str(data))
         elif event == "error":
             msg = data.get("error") if isinstance(data, dict) else str(data)
@@ -108,13 +117,18 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
             if sid <= STEAM64_BASE:
                 continue
             lane = data.get("m_nAssignedLane")
-            latest[sid - STEAM64_BASE] = Player(
-                sid - STEAM64_BASE, int(data["hero_id"]), int(data["m_iTeamNum"]),
-                int(lane) if lane else None)
-            if len(latest) >= 12 and all(p.lane for p in latest.values()) and complete_at is None:
+            aid = sid - STEAM64_BASE
+            if aid not in latest:
+                last_new_at = time.time()
+            latest[aid] = Player(aid, int(data["hero_id"]), int(data["m_iTeamNum"]),
+                                 int(lane) if lane else None)
+            if complete_at is None and len(latest) >= 12 and all(p.lane for p in latest.values()):
                 complete_at = time.time()
         if complete_at and time.time() - complete_at > settle_s:
             break  # keep reading a few seconds so lane swaps settle
+        # Street Brawl (8 players, no lanes): done once nobody new shows up for a while.
+        if complete_at is None and len(latest) >= 8 and time.time() - last_new_at > 3 * settle_s:
+            break
         if time.time() - started > timeout_s:
             break
     if not latest:
@@ -135,7 +149,7 @@ def fetch_roster(api: DeadlockApi, match_id: int, account_id: int,
     while time.time() < deadline:
         attempt += 1
         active = roster_from_active(api, match_id, account_id)
-        if active and len(active.players) >= 12:
+        if active and len(active.players) >= 8:
             on_status("Jogadores encontrados na lista de partidas ativas.")
             # active list has no lanes; still try broadcast for lanes, but keep this as fallback
             try:

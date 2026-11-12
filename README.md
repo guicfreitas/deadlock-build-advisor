@@ -8,6 +8,8 @@ Quando uma partida de **Deadlock** começa, o app descobre quem são os seus adv
 
 As recomendações aparecem num **overlay sempre visível** por cima do jogo e numa **página web local** (`http://localhost:8787`), que você pode abrir no navegador do overlay da Steam (Shift+Tab), num segundo monitor ou no celular.
 
+Funciona nos modos **casual** e **competitivo** (mapa padrão 6v6). A **briga de rua** não é suportada, porque lá os itens vêm por draft e não são comprados. O app detecta esse modo e apenas avisa.
+
 ## É seguro? (VAC)
 
 Sim. O app **não injeta nada no jogo, não lê memória e não modifica arquivos do jogo**. Ele só:

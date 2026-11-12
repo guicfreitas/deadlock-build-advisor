@@ -108,6 +108,7 @@ class DeadlockApi:
                     event, data_lines = "message", []
                     continue
                 if line.startswith(":"):
+                    yield "ping", None  # keep-alive: lets callers check their timers
                     continue
                 key, _, value = line.partition(":")
                 value = value[1:] if value.startswith(" ") else value

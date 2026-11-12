@@ -17,6 +17,18 @@ def test_parse_lines():
     assert parse_line('[Client] Map: "<empty>"') is None
     assert parse_line("11/10 23:05:29 Source2Shutdown").kind == "game_closed"
     assert parse_line("random noise") is None
+    # seen in a real match 2026-11-12: the lobby is destroyed before the client disconnects
+    assert parse_line("11/12 00:13:15 Lobby 102163259272093796 for Match 135900663 destroyed").kind == "match_ended"
+
+
+def test_roster_mode_detection():
+    from deadlock_advisor.live import Player, _build_roster
+    six = [Player(i, 1, i % 2, (1, 4, 6)[i % 3]) for i in range(12)]
+    r = _build_roster(1, six, 0)
+    assert r.game_mode == "normal"
+    assert all(p.lane == r.me.lane and p.team != r.me.team for p in r.lane_enemies)
+    brawl = [Player(i, 1, i % 2, None) for i in range(8)]
+    assert _build_roster(1, brawl, 0).game_mode == "street_brawl"
 
 
 def test_current_match_replay():

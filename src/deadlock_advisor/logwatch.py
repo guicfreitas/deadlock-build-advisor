@@ -21,6 +21,7 @@ from typing import Callable
 
 RE_MATCH_TICKET = re.compile(r"match_id=(\d+)")
 RE_LOBBY = re.compile(r"Lobby \d+ for Match (\d+) created")
+RE_LOBBY_END = re.compile(r"Lobby \d+ for Match \d+ destroyed")
 RE_MAP = re.compile(r'\[Client\] Map: "([^"]*)"')
 
 HIDEOUT_MAPS = {"dl_hideout"}
@@ -37,6 +38,8 @@ def parse_line(line: str) -> LogEvent | None:
     m = RE_MATCH_TICKET.search(line) or RE_LOBBY.search(line)
     if m:
         return LogEvent("match_found", int(m.group(1)), line)
+    if RE_LOBBY_END.search(line):
+        return LogEvent("match_ended", None, line)
     m = RE_MAP.search(line)
     if m:
         name = m.group(1)

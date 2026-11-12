@@ -14,5 +14,15 @@
   (`"m_PlayerDataGlobal__m_nHeroID"`). Teams come back as 2/3 (we map them to 0/1). Lanes are 1/4/6.
   Spectating is limited to ~6/h without an API key; a match spectated within the last hour is cached.
 - `k_eNotInGame` means the match has not started or is already over: retry with backoff.
+- Street Brawl (4v4, `game_mode` 4, every lane reported as 0) is **out of scope**: items are drafted,
+  not bought. Only the standard map is supported (casual/unranked and competitive/ranked).
+
+## What the game itself exposes (tested in a live match, 2026-11-12)
+- No Game State Integration: no GSI code in any client or engine DLL.
+- The combat log (`citadel_combat_log_*`) is off in matchmaking: `citadel_combat_log_enabled_in_lobbies`
+  is a dev-only cvar.
+- The `status` console command lists player **names**, the map and the game state, but not heroes or SteamIDs.
+- Hero resource paths in console.log are noise: the UI and skins load heroes that are not in the match.
+- So the live broadcast through deadlock-api is the only VAC-safe source for the enemy heroes.
 - Item stats are confounded by the matchup itself. `engine.score_items` subtracts the context offset;
   keep that when changing the scoring.

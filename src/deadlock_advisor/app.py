@@ -102,9 +102,14 @@ class Advisor:
             roster = fetch_roster(self.api, match_id, account, on_status=status)
             if not self._still_current(match_id):
                 return
+            if roster.game_mode == "street_brawl":
+                self.state.update(status="idle", message=(
+                    "Briga de rua: os itens vêm por draft, sem compra. Não há build para recomendar."))
+                return
             cat = self.catalog
             self.state.update(roster={
                 "me": roster.me.to_dict(),
+                "game_mode": roster.game_mode,
                 "players": [p.to_dict() | {"hero": cat.hero_name(p.hero_id)} for p in roster.players],
             }, message="Heróis identificados. Calculando builds…")
             self.compute(roster.me.hero_id, [p.hero_id for p in roster.enemies],

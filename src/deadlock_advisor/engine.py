@@ -201,8 +201,8 @@ class Recommender:
             out[eid] = sorted(good, key=lambda s: -s.lift)[:n]
         return out
 
-    def matchups(self, hero_id: int, enemy_ids: list[int], same_lane: bool) -> dict[int, dict]:
-        rows = self.api.hero_counter_stats(same_lane_filter=same_lane, min_matches=20, **self.cfg.filters)
+    def matchups(self, hero_id: int, enemy_ids: list[int], same_lane: bool, filters: dict) -> dict[int, dict]:
+        rows = self.api.hero_counter_stats(same_lane_filter=same_lane, min_matches=20, **filters)
         out = {}
         for r in rows:
             if r["hero_id"] == hero_id and r["enemy_hero_id"] in enemy_ids:
@@ -212,17 +212,22 @@ class Recommender:
 
     # ------------------------------------------------------------ public
     def recommend(self, hero_id: int, enemy_ids: list[int], lane_enemy_ids: list[int]) -> dict:
-        c, f = self.cfg, self.cfg.filters
+        """Standard 6v6 map (casual/unranked and competitive/ranked).
+        Street Brawl is not supported: items there are drafted, not bought."""
+        c = self.cfg
+        f = {"game_mode": "normal"} | c.filters
+        same_lane = True
         lw = c.lane_window_s
         jobs = {
             "lane_base": lambda: self.api.item_stats(hero_id=hero_id, max_bought_at_s=lw, **f),
             "full_base": lambda: self.api.item_stats(hero_id=hero_id, **f),
-            "mu_lane": lambda: self.matchups(hero_id, lane_enemy_ids, True) if lane_enemy_ids else {},
-            "mu_all": lambda: self.matchups(hero_id, enemy_ids, False),
+            "mu_lane": lambda: self.matchups(hero_id, lane_enemy_ids, same_lane, f) if lane_enemy_ids else {},
+            "mu_all": lambda: self.matchups(hero_id, enemy_ids, False, f),
         }
         if lane_enemy_ids:
             jobs["lane_ctx"] = lambda: self.api.item_stats(
-                hero_id=hero_id, enemy_hero_ids=lane_enemy_ids, same_lane_filter=True, max_bought_at_s=lw, **f)
+                hero_id=hero_id, enemy_hero_ids=lane_enemy_ids, same_lane_filter=same_lane,
+                max_bought_at_s=lw, **f)
         for e in enemy_ids:
             jobs[f"vs_{e}"] = (lambda e=e: self.api.item_stats(hero_id=hero_id, enemy_hero_ids=[e], **f))
         with ThreadPoolExecutor(max_workers=6) as ex:
@@ -249,5 +254,5 @@ class Recommender:
             "lane_build": [iv(s) for s in lane],
             "lane_cost": sum(self.cat.items[s.item_id]["cost"] for s in lane),
             "full_build": {k: [iv(s) for s in v] for k, v in phases.items()},
-            "settings": {"lane_window_min": lw // 60, "filters": f},
+            "settings": {"lane_window_min": round(lw / 60, 1), "filters": f},
         }
