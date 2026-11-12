@@ -10,8 +10,13 @@ from pathlib import Path
 from .api import DeadlockApi
 from .config import Config
 from .engine import Catalog, EngineConfig, Recommender
-from .live import fetch_roster
+from .live import Roster, fetch_roster, watch_roster
 from .logwatch import ConsoleLogWatcher, LogEvent
+
+
+def _lane_key(roster: Roster) -> tuple:
+    """What the lane build depends on: my hero and the enemy heroes in my lane."""
+    return roster.me.hero_id, tuple(sorted(p.hero_id for p in roster.lane_enemies))
 
 
 class AppState:
@@ -46,6 +51,7 @@ class Advisor:
         self._job_lock = threading.Lock()
         self._current_job: int | None = None
         self.watcher: ConsoleLogWatcher | None = None
+        self.lane_watch_s = 300  # how long to keep watching for lane swaps after the first build
 
     @property
     def catalog(self) -> Catalog:
@@ -106,18 +112,45 @@ class Advisor:
                 self.state.update(status="idle", message=(
                     "Briga de rua: os itens vêm por draft, sem compra. Não há build para recomendar."))
                 return
-            cat = self.catalog
-            self.state.update(roster={
-                "me": roster.me.to_dict(),
-                "game_mode": roster.game_mode,
-                "players": [p.to_dict() | {"hero": cat.hero_name(p.hero_id)} for p in roster.players],
-            }, message="Heróis identificados. Calculando builds…")
-            self.compute(roster.me.hero_id, [p.hero_id for p in roster.enemies],
-                         [p.hero_id for p in roster.lane_enemies], match_id=match_id)
+            self._apply_roster(roster, "Heróis identificados. Calculando builds…")
         except Exception as e:  # noqa: BLE001 - surface any failure in the UI
             traceback.print_exc()
             if self._still_current(match_id):
                 self.state.update(status="error", message=f"Erro: {e}. Use o modo manual na página.")
+            return
+        # Lanes can still be swapped right after the match starts: keep watching for a few
+        # minutes and redo the lane build if the enemy duo in my lane changes.
+        threading.Thread(target=self._watch_lanes, args=(match_id, account, roster),
+                         daemon=True, name="lane-watch").start()
+
+    def _apply_roster(self, roster, message: str) -> None:
+        cat = self.catalog
+        self.state.update(roster={
+            "me": roster.me.to_dict(),
+            "game_mode": roster.game_mode,
+            "players": [p.to_dict() | {"hero": cat.hero_name(p.hero_id)} for p in roster.players],
+        }, message=message)
+        self.compute(roster.me.hero_id, [p.hero_id for p in roster.enemies],
+                     [p.hero_id for p in roster.lane_enemies], match_id=roster.match_id)
+
+    def _watch_lanes(self, match_id: int, account: int, roster) -> None:
+        current = {"key": _lane_key(roster)}
+
+        def on_change(new_roster):
+            key = _lane_key(new_roster)
+            if key == current["key"] or not self._still_current(match_id):
+                return
+            current["key"] = key
+            names = ", ".join(self.catalog.hero_name(h) for h in key[1]) or "desconhecida"
+            try:
+                self._apply_roster(new_roster, f"Lane mudou (agora contra {names}). Recalculando…")
+                if self._still_current(match_id):
+                    self.state.update(message=f"Lane atualizada: agora contra {names}. Build de lane recalculada.")
+            except Exception:  # noqa: BLE001 - keep the previous build on screen
+                traceback.print_exc()
+
+        watch_roster(self.api, match_id, account, on_change,
+                     duration_s=self.lane_watch_s, should_continue=lambda: self._still_current(match_id))
 
     def compute(self, hero_id: int, enemies: list[int], lane_enemies: list[int], match_id: int | None = None) -> dict:
         rec = self.recommender.recommend(hero_id, enemies, lane_enemies)

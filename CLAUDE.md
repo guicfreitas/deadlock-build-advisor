@@ -23,6 +23,12 @@
   is a dev-only cvar.
 - The `status` console command lists player **names**, the map and the game state, but not heroes or SteamIDs.
 - Hero resource paths in console.log are noise: the UI and skins load heroes that are not in the match.
-- So the live broadcast through deadlock-api is the only VAC-safe source for the enemy heroes.
+- Your own hero is not known before the match either: you queue with a priority **list**
+  (`citadel_hero_roster_high_priority` in `user_convars`) and matchmaking picks one from it.
+- So the live broadcast through deadlock-api is the only VAC-safe source for the heroes.
+- Measured delay in a real casual match: about 85 s from "match found" to build ready, which
+  landed about 2 s after the game clock started at 0:00. The wait is the Valve broadcast relay.
+- Lanes can be swapped after the first read: `app._watch_lanes` keeps the stream open for 5 min
+  and redoes the lane build when the enemy duo in your lane changes.
 - Item stats are confounded by the matchup itself. `engine.score_items` subtracts the context offset;
   keep that when changing the scoring.

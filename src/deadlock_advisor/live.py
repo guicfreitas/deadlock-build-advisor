@@ -112,17 +112,14 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
             raise ApiError(msg or "erro no live query")
         elif event == "end":
             break
-        elif isinstance(data, dict) and "m_steamID" in data:
-            sid = int(data["m_steamID"] or 0)
-            if sid <= STEAM64_BASE:
+        else:
+            p = _row_to_player(data)
+            if p is None:
                 continue
-            lane = data.get("m_nAssignedLane")
-            aid = sid - STEAM64_BASE
-            if aid not in latest:
+            if p.account_id not in latest:
                 last_new_at = time.time()
-            latest[aid] = Player(aid, int(data["hero_id"]), int(data["m_iTeamNum"]),
-                                 int(lane) if lane else None)
-            if complete_at is None and len(latest) >= 12 and all(p.lane for p in latest.values()):
+            latest[p.account_id] = p
+            if complete_at is None and len(latest) >= 12 and all(x.lane for x in latest.values()):
                 complete_at = time.time()
         if complete_at and time.time() - complete_at > settle_s:
             break  # keep reading a few seconds so lane swaps settle
@@ -133,10 +130,56 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
             break
     if not latest:
         raise ApiError("Broadcast sem jogadores ainda.")
-    # convert team numbers 2/3 -> 0/1 to match the stats API convention
-    players = [Player(p.account_id, p.hero_id, p.team - 2 if p.team >= 2 else p.team, p.lane)
-               for p in latest.values()]
-    return _build_roster(match_id, players, account_id)
+    return _build_roster(match_id, list(latest.values()), account_id)
+
+
+def _row_to_player(data) -> Player | None:
+    """One CCitadelPlayerController row -> Player (teams 2/3 mapped to the stats API's 0/1)."""
+    if not isinstance(data, dict) or "m_steamID" not in data:
+        return None
+    sid = int(data["m_steamID"] or 0)
+    if sid <= STEAM64_BASE or not data.get("hero_id"):
+        return None
+    team = int(data["m_iTeamNum"])
+    lane = data.get("m_nAssignedLane")
+    return Player(sid - STEAM64_BASE, int(data["hero_id"]), team - 2 if team >= 2 else team,
+                  int(lane) if lane else None)
+
+
+def watch_roster(api: DeadlockApi, match_id: int, account_id: int,
+                 on_change: Callable[[Roster], None],
+                 duration_s: float = 300, check_every_s: float = 3.0,
+                 should_continue: Callable[[], bool] = lambda: True) -> None:
+    """Keep the broadcast open for `duration_s` and call `on_change` whenever a hero, team or
+    lane changes (early lane swaps). The match was already spectated, so deadlock-api serves it
+    from cache and this does not count against the spectate limit."""
+    latest: dict[int, Player] = {}
+    last_sig = None
+    last_check = time.time()
+    end = time.time() + duration_s
+    try:
+        for event, data in api.stream_sse("/v1/matches/demo/live/query",
+                                          {"match_id": match_id, "query": ROSTER_SQL}, timeout=60):
+            if event in ("error", "end") or not should_continue() or time.time() > end:
+                break
+            p = _row_to_player(data)
+            if p is not None:
+                latest[p.account_id] = p
+            if time.time() - last_check < check_every_s or len(latest) < 12:
+                continue
+            last_check = time.time()
+            sig = tuple(sorted((x.account_id, x.hero_id, x.team, x.lane) for x in latest.values()))
+            if sig == last_sig:
+                continue
+            last_sig = sig
+            # the first snapshot is reported too: it may already differ from the initial read.
+            # The caller decides whether anything relevant (its lane) changed.
+            try:
+                on_change(_build_roster(match_id, list(latest.values()), account_id))
+            except ApiError:
+                pass
+    except (ApiError, OSError):
+        pass  # best effort: the first recommendation is already on screen
 
 
 def fetch_roster(api: DeadlockApi, match_id: int, account_id: int,

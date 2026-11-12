@@ -60,7 +60,8 @@ Se quiser personalizar, copie `config.example.json` para `config.json`.
 
 ## Uso
 
-- **Automático**: deixe o app aberto. Ao entrar na partida, o status muda para "Partida encontrada" e a build aparece em cerca de 1 a 2 minutos (o broadcast da Valve tem um atraso).
+- **Automático**: deixe o app aberto. Ao entrar na partida, o status muda para "Partida encontrada". Numa partida casual de teste, a build apareceu cerca de 85 s depois, praticamente quando o relógio do jogo chegou a 0:00. O atraso é do broadcast da Valve.
+- **Troca de lane**: nos primeiros 5 minutos, o app continua acompanhando a partida. Se a dupla inimiga da sua lane mudar, ele recalcula a build de lane e avisa no status.
 - **Overlay**: arraste com o botão esquerdo, dê duplo-clique para recolher e clique com o botão direito para fechar.
 - **Modo manual** (na página): escolha o seu herói e marque os inimigos. Um clique marca como inimigo e um segundo clique marca como inimigo de lane.
 - **Linha de comando**:
