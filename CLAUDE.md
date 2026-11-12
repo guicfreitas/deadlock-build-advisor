@@ -45,3 +45,13 @@
 - To decode a code the game copied, Node 22+ has `zlib.zstdDecompressSync`.
 - Never hand-retype a share code in chat: one typo makes the game reject it. Put it on the
   clipboard from the program (`clipboard.set_text`).
+
+## Enemy items mid-match (verified on a live match, 2026-11-12)
+- `CCitadelPlayerController."m_PlayerDataGlobal__m_vecUpgrades"` is List(Binary): 8-byte hex
+  blobs, item id = little-endian uint32 of the first 4 bytes (`live.decode_upgrades`).
+- The live query streams every row of every tick (~13 MB/min with that column) and ignores
+  filters on `tick` (`tick % 320 = 0` returns nothing). So `live.snapshot_items` reads one set
+  of 12 players and disconnects; with the match already spectated it takes 2-5 s.
+- Python's default urllib User-Agent gets HTTP 403: always go through `DeadlockApi`.
+- `counters.py` maps enemy items (by class_name) to threats and answers; the stats API can't
+  condition on enemy items, only heroes. The answer is picked by `rec["item_lift"]`.

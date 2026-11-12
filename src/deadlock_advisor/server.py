@@ -74,8 +74,11 @@ def make_handler(advisor: Advisor):
                 rec = advisor.state.snapshot().get("recommendation")
                 if not rec:
                     return self._json({"error": "nenhuma build calculada ainda"}, 409)
-                code = gamebuild.from_recommendation(rec, advisor.cfg.account_id).share_code()
-                return self._json({"ok": True, "copied": clipboard.set_text(code), "code": code})
+                build = gamebuild.from_recommendation(rec, advisor.cfg.account_id)
+                code = build.share_code()
+                copied = clipboard.set_text(code)
+                advisor.mark_copied(build)  # from now on, counters compare against this build
+                return self._json({"ok": True, "copied": copied, "code": code})
             if path == "/api/match":
                 try:
                     advisor.start_match(int(body["match_id"]))

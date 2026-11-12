@@ -1,6 +1,7 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 let lastVersion = -1;
+let lastState = null;
 
 function heroHtml(h, big = false) {
   const mu = h.matchup;
@@ -17,7 +18,36 @@ function itemHtml(it) {
     <div class="meta">${it.cost} · ${it.wr}% <span class="lift ${cls}">(${sign}${it.lift})</span></div></div></div>`;
 }
 
+function miniItem(it, cls = "") {
+  if (!it) return "";
+  return `<span class="mini ${esc(it.slot)} ${cls}"><img src="${esc(it.image)}" alt="">${esc(it.name)}</span>`;
+}
+
+function ago(ts) {
+  const s = Math.max(0, Math.round(Date.now() / 1000 - ts));
+  return s < 60 ? `há ${s}s` : `há ${Math.round(s / 60)} min`;
+}
+
+function renderSwaps(s) {
+  const live = s.live_items, list = live?.suggestions || [];
+  $("#swaps").classList.toggle("hidden", !list.length);
+  if (!list.length) return;
+  const base = live.against_copied ? "na build que você colou" : "na build recomendada";
+  $("#swaps-meta").textContent = `${base} · itens dos inimigos lidos ${ago(live.updated_at)}`;
+  $("#swap-list").innerHTML = list.map((x) => {
+    const lift = x.lift ? `<span class="lift ${x.lift > 0 ? "pos" : "neg"}">${x.lift > 0 ? "+" : ""}${x.lift}% WR</span>` : "";
+    const what = x.instead_of
+      ? `Compre ${miniItem(x.buy, "buy")} em vez de ${miniItem(x.instead_of, "drop")}`
+      : `Compre também ${miniItem(x.buy, "buy")}`;
+    return `<div class="swap"><div class="what">${what} ${lift}</div>
+      <div class="why">Contra <b>${esc(x.threat_label)}</b>: ${esc(x.reason)}</div></div>`;
+  }).join("");
+}
+
 function render(s) {
+  renderSwaps(s);
+  $("#copybar").classList.toggle("hidden", !s.recommendation);
+  if (s.copied) $("#copy-msg").innerHTML = `Copiado “${esc(s.copied.name)}”. As trocas acima comparam com essa build.`;
   const st = $("#status");
   st.className = `status ${s.status}`;
   $("#status-msg").textContent = s.message || s.status;
@@ -39,7 +69,7 @@ function render(s) {
 async function poll() {
   try {
     const s = await (await fetch("/api/state")).json();
-    if (s.version !== lastVersion) { lastVersion = s.version; render(s); }
+    if (s.version !== lastVersion) { lastVersion = s.version; lastState = s; render(s); }
   } catch { $("#status-msg").textContent = "App desconectado"; }
   setTimeout(poll, 1500);
 }
@@ -71,6 +101,17 @@ async function setupManual() {
     await fetch("/api/match", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ match_id: +mid }) });
   });
 }
+
+$("#copy-build").addEventListener("click", async () => {
+  const r = await (await fetch("/api/copy-build", { method: "POST" })).json().catch(() => ({}));
+  if (r.error) { $("#copy-msg").textContent = r.error; return; }
+  // the app copies on the PC; if that failed (other OS), fall back to this browser
+  if (!r.copied && navigator.clipboard) await navigator.clipboard.writeText(r.code).catch(() => {});
+  $("#copy-msg").innerHTML = "Copiado! No Deadlock: loja → Explorar guias → crie um guia → <b>Colar guia</b>.";
+});
+
+// refresh "lida há Xs" between polls
+setInterval(() => { const m = $("#swaps-meta"); if (m && lastState) renderSwaps(lastState); }, 15000);
 
 poll();
 setupManual();

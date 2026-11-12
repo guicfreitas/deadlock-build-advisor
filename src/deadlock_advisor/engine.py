@@ -255,4 +255,7 @@ class Recommender:
             "lane_cost": sum(self.cat.items[s.item_id]["cost"] for s in lane),
             "full_build": {k: [iv(s) for s in v] for k, v in phases.items()},
             "settings": {"lane_window_min": round(lw / 60, 1), "filters": f},
+            # every scored item's lift vs this lobby (pp): lets mid-match counters pick the
+            # best answer for this hero, not just any item that fits the threat
+            "item_lift": {str(i): round(s.lift * 100, 2) for i, s in full_scores.items()},
         }

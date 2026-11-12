@@ -7,11 +7,11 @@ import traceback
 from dataclasses import fields
 from pathlib import Path
 
-from . import steam
+from . import counters, steam
 from .api import DeadlockApi
 from .config import Config
 from .engine import Catalog, EngineConfig, Recommender
-from .live import Roster, fetch_roster, watch_roster
+from .live import Roster, fetch_roster, snapshot_items, watch_roster
 from .logwatch import ConsoleLogWatcher, LogEvent
 
 
@@ -53,6 +53,9 @@ class Advisor:
         self._current_job: int | None = None
         self.watcher: ConsoleLogWatcher | None = None
         self.lane_watch_s = 300  # how long to keep watching for lane swaps after the first build
+        self.items_every_s = 60  # how often to sample everyone's items during the match
+        self._roster: Roster | None = None
+        self._copied: list[int] | None = None   # item order of the build the player pasted in game
 
     @property
     def catalog(self) -> Catalog:
@@ -101,7 +104,9 @@ class Advisor:
             if self._current_job == match_id:
                 return
             self._current_job = match_id
+        self._copied = None
         self.state.update(status="loading", match_id=match_id, roster=None, recommendation=None,
+                          live_items=None, copied=None,
                           message=f"Partida {match_id} encontrada. Lendo heróis dos adversários…")
         threading.Thread(target=self._match_job, args=(match_id,), daemon=True).start()
 
@@ -135,9 +140,12 @@ class Advisor:
         # minutes and redo the lane build if the enemy duo in my lane changes.
         threading.Thread(target=self._watch_lanes, args=(match_id, account, roster),
                          daemon=True, name="lane-watch").start()
+        threading.Thread(target=self._watch_items, args=(match_id,),
+                         daemon=True, name="items-watch").start()
 
     def _apply_roster(self, roster, message: str) -> None:
         cat = self.catalog
+        self._roster = roster
         self.state.update(roster={
             "me": roster.me.to_dict(),
             "game_mode": roster.game_mode,
@@ -164,6 +172,59 @@ class Advisor:
 
         watch_roster(self.api, match_id, account, on_change,
                      duration_s=self.lane_watch_s, should_continue=lambda: self._still_current(match_id))
+
+    # ------------------------------------------------------------ mid-match counters
+    def mark_copied(self, build) -> None:
+        """The player copied this build to paste it in game: it is now the plan we compare to."""
+        self._copied = [i for c in build.categories if not c.optional for i in c.items]
+        self.state.update(copied={"at": time.time(), "name": build.name})
+
+    def _planned(self, rec: dict) -> list[int]:
+        if self._copied:
+            return list(self._copied)
+        full = rec.get("full_build", {})
+        return [i["id"] for i in rec.get("lane_build", []) + full.get("mid", []) + full.get("late", [])]
+
+    def update_counters(self, items_by_account: dict[int, list[int]]) -> dict | None:
+        """Turn one items snapshot into swap suggestions and publish them."""
+        roster, rec = self._roster, self.state.snapshot().get("recommendation")
+        if not roster or not rec:
+            return None
+        cat = self.catalog
+        all_items = {i["id"]: i for i in cat.by_class.values()}
+        enemy_items = {p.hero_id: items_by_account.get(p.account_id, []) for p in roster.enemies}
+        mine = items_by_account.get(roster.me.account_id, [])
+        lift = {int(k): v for k, v in (rec.get("item_lift") or {}).items()}
+        hero_names = {h: cat.hero_name(h) for h in enemy_items}
+        swaps = counters.suggest(enemy_items, mine, self._planned(rec), all_items, lift, hero_names)
+
+        def view(iid):
+            i = all_items.get(iid)
+            return i and {"id": iid, "name": i["name"], "cost": i.get("cost"), "tier": i.get("item_tier"),
+                          "slot": i.get("item_slot_type"), "image": i.get("shop_image_webp") or i.get("image")}
+        live = {
+            "updated_at": time.time(),
+            "against_copied": bool(self._copied),
+            "suggestions": [s | {"buy": view(s["buy"]), "instead_of": view(s["instead_of"])} for s in swaps],
+            "enemies": [{"hero": cat.hero_view(h), "items": [v for v in map(view, ids) if v]}
+                        for h, ids in enemy_items.items()],
+            "my_items": mine,
+        }
+        self.state.update(live_items=live)
+        return live
+
+    def _watch_items(self, match_id: int) -> None:
+        while self._still_current(match_id):
+            try:
+                snap = snapshot_items(self.api, match_id)
+                if snap and self._still_current(match_id):
+                    self.update_counters(snap)
+            except Exception:  # noqa: BLE001 - best effort; try again next round
+                traceback.print_exc()
+            for _ in range(self.items_every_s):
+                if not self._still_current(match_id):
+                    return
+                time.sleep(1)
 
     def compute(self, hero_id: int, enemies: list[int], lane_enemies: list[int], match_id: int | None = None) -> dict:
         rec = self.recommender.recommend(hero_id, enemies, lane_enemies)

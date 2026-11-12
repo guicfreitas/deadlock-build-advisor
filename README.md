@@ -19,6 +19,11 @@ Quando a partida começa, o app descobre quem são os seus adversários e monta 
 | ⚔️ **Build geral** | itens de mid e late game | o **time inimigo inteiro** |
 | 🎯 **Counters por adversário** | os itens com maior vantagem contra cada inimigo (ex.: *Metal Skin* contra Haze) e a sua win rate no confronto | cada inimigo |
 
+E durante a partida:
+
+- 📋 **Copiar para o jogo**: um clique copia a build no formato de guia do Deadlock. No jogo, é só abrir *Explorar guias*, criar um guia e clicar em **Colar guia**: as categorias, os itens e as anotações entram prontos, e a Compra rápida passa a seguir a build.
+- 🔄 **Troque para counterar**: a cada minuto o app lê o que os inimigos compraram e, se aparecer uma ameaça (muita cura, dano de arma, dano espiritual, controle, resistências), sugere no topo da tela "compre X em vez de Y" na build que você colou, dizendo quem comprou o quê.
+
 As recomendações aparecem num **overlay sempre visível** por cima do jogo e numa **página web local** (`http://localhost:8787`), que você pode abrir no navegador do overlay da Steam (Shift+Tab), num segundo monitor ou no celular.
 
 > [!NOTE]
@@ -133,11 +138,9 @@ Contribuições são bem-vindas: abra uma *issue* com bugs ou ideias, ou mande u
 
 ## Roadmap
 
-- [ ] Reavaliar a build durante a partida com os itens que os inimigos compraram (o broadcast ao vivo traz isso).
 - [ ] Ajustar automaticamente o filtro de rank ao seu rank (`/v1/players/{id}/rank`).
-- [ ] Recomendar a ordem de habilidades (`/v1/analytics/ability-order-stats`).
+- [ ] Recomendar a ordem de habilidades (`/v1/analytics/ability-order-stats`) e incluí-la no guia colado.
 - [ ] Atalho global para mostrar ou esconder o overlay.
-- [ ] Exportar a build para o formato de Hero Builds do jogo.
 
 ## Créditos
 

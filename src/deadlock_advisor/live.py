@@ -206,3 +206,51 @@ def fetch_roster(api: DeadlockApi, match_id: int, account_id: int,
             on_status(f"Tentativa {attempt}: {e} — tentando de novo em breve…")
             time.sleep(min(60, 15 * attempt))
     raise ApiError(f"Não foi possível ler os jogadores da partida: {last_err}")
+
+
+# --------------------------------------------------------------------------- enemy items
+# m_vecUpgrades is List(Binary): one 8-byte blob per item, the item id as little-endian
+# uint32 in the first 4 bytes (the other 4 were always zero). Verified on a live match.
+ITEMS_SQL = (
+    'SELECT "m_steamID", "m_PlayerDataGlobal__m_vecUpgrades" AS upgrades '
+    "FROM CCitadelPlayerController "
+    'WHERE "m_PlayerDataGlobal__m_nHeroID" > 0'
+)
+
+
+def decode_upgrades(blobs) -> list[int]:
+    out = []
+    for blob in blobs or []:
+        try:
+            raw = bytes.fromhex(blob) if isinstance(blob, str) else bytes(blob)
+        except (TypeError, ValueError):
+            continue
+        if len(raw) >= 4:
+            out.append(int.from_bytes(raw[:4], "little"))
+    return out
+
+
+def snapshot_items(api: DeadlockApi, match_id: int, players: int = 12,
+                   timeout_s: float = 45) -> dict[int, list[int]]:
+    """account_id -> item ids, from one pass over the broadcast.
+
+    The live query streams every row of every tick (~13 MB/min with this column) and does
+    not filter on `tick`, so instead of keeping it open we read one full set of players
+    and disconnect. The match is already spectated, so reconnecting is cheap (2-5 s) and
+    does not count against the spectate limit.
+    """
+    seen: dict[int, list[int]] = {}
+    start = time.time()
+    for event, data in api.stream_sse("/v1/matches/demo/live/query",
+                                      {"match_id": match_id, "query": ITEMS_SQL}, timeout=timeout_s):
+        if event == "error":
+            raise ApiError((data.get("error") if isinstance(data, dict) else str(data)) or "erro no live query")
+        if event == "end" or time.time() - start > timeout_s:
+            break
+        if isinstance(data, dict) and "upgrades" in data:
+            sid = int(data.get("m_steamID") or 0)
+            if sid > STEAM64_BASE:
+                seen[sid - STEAM64_BASE] = decode_upgrades(data["upgrades"])
+            if len(seen) >= players:
+                break
+    return seen
