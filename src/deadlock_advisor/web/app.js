@@ -44,6 +44,32 @@ function renderSwaps(s) {
   }).join("");
 }
 
+function renderAbilities(order) {
+  $("#abilities").classList.toggle("hidden", !order);
+  if (!order) return;
+  $("#abilities-meta").textContent = order.matches
+    ? `a ordem dos jogadores do herói · ${order.matches.toLocaleString("pt-BR")} partidas seguiram esse caminho`
+    : "a ordem dos jogadores do herói";
+  const tierLabel = (t) => (t === 0 ? "•" : t);
+  const head = `<div class="ab-head"></div>` + order.steps.map((_, i) => `<div class="ab-n">${i + 1}</div>`).join("");
+  const rows = order.abilities.map((a) => `<div class="ab-name" title="${esc(a.name)}">
+      ${a.image ? `<img src="${esc(a.image)}" alt="">` : ""}<span><b>${a.slot}</b> ${esc(a.name)}</span></div>` +
+    order.steps.map((s) => s.id === a.id
+      ? `<div class="ab-cell on t${s.tier}" title="${s.tier ? `melhoria ${s.tier} (${s.cost} ponto${s.cost > 1 ? "s" : ""})` : "desbloquear"}${s.avg_min ? ` · ~${s.avg_min} min` : ""}">${tierLabel(s.tier)}</div>`
+      : `<div class="ab-cell"></div>`).join("")).join("");
+  const grid = $("#ability-grid");
+  grid.style.gridTemplateColumns = `minmax(110px, 170px) repeat(${order.steps.length}, minmax(18px, 1fr))`;
+  grid.innerHTML = head + rows;
+}
+
+function renderUpdate(u) {
+  const show = u && (u.available || u.state === "downloading" || u.state === "installing" || u.state === "error");
+  $("#update").classList.toggle("hidden", !show);
+  if (!show) return;
+  $("#update-msg").textContent = u.message || "";
+  $("#update-go").classList.toggle("hidden", !(u.can_install && u.state === "ready"));
+}
+
 const SETUP_HELP = {
   steam: "Steam não encontrada. Instale a Steam ou defina a pasta do Deadlock em Configurações.",
   game: "Deadlock não encontrado nas bibliotecas da Steam. Defina a pasta em Configurações.",
@@ -68,6 +94,7 @@ function renderSetup(c) {
 
 function render(s) {
   renderSetup(s.setup);
+  renderUpdate(s.update);
   renderSwaps(s);
   $("#copybar").classList.toggle("hidden", !s.recommendation);
   if (s.copied) $("#copy-msg").innerHTML = `Copiado “${esc(s.copied.name)}”. As trocas acima comparam com essa build.`;
@@ -76,6 +103,7 @@ function render(s) {
   $("#status-msg").textContent = s.message || s.status;
   const rec = s.recommendation;
   for (const id of ["#matchup", "#lane", "#full", "#enemies"]) $(id).classList.toggle("hidden", !rec);
+  renderAbilities(rec?.ability_order);
   if (!rec) return;
   $("#me").innerHTML = heroHtml(rec.hero, true);
   $("#lane-enemies").innerHTML = rec.lane_enemies.length
@@ -132,6 +160,12 @@ $("#copy-build").addEventListener("click", async () => {
   // the app copies on the PC; if that failed (other OS), fall back to this browser
   if (!r.copied && navigator.clipboard) await navigator.clipboard.writeText(r.code).catch(() => {});
   $("#copy-msg").innerHTML = "Copiado! No Deadlock: loja → Explorar guias → crie um guia → <b>Colar guia</b>.";
+});
+
+$("#update-go").addEventListener("click", async () => {
+  const r = await (await fetch("/api/update", { method: "POST" })).json().catch(() => ({}));
+  $("#update-msg").textContent = r.error || "Instalando a atualização… o app reabre sozinho.";
+  $("#update-go").classList.add("hidden");
 });
 
 // refresh "lida há Xs" between polls

@@ -22,6 +22,12 @@ class ApiError(RuntimeError):
     pass
 
 
+def since_days(days: int) -> int:
+    """Unix time `days` ago, rounded down to the day: the URL (and so the CDN cache) stays
+    the same all day."""
+    return (int(time.time()) // 86400 - days) * 86400
+
+
 class DeadlockApi:
     def __init__(self, cache_dir: Path, api_key: str | None = None, cache_ttl_s: int = 3600):
         self.cache_dir = Path(cache_dir)
@@ -124,11 +130,32 @@ class DeadlockApi:
     def upgrade_items(self) -> list[dict]:
         return self.get("/v1/assets/items/by-type/upgrade", ttl_s=24 * 3600)
 
+    def analytics(self, path: str, params: dict[str, Any], **kw) -> Any:
+        """Heavy queries over the API's default 30-day window can time out (HTTP 504, and the
+        CDN then serves that 504 for the same URL); 14 days is enough data and answers fast."""
+        try:
+            return self.get(path, params, **kw)
+        except ApiError as e:
+            if "HTTP 504" not in str(e) or "min_unix_timestamp" in params:
+                raise
+            return self.get(path, params | {"min_unix_timestamp": since_days(14)}, **kw)
+
     def item_stats(self, **params) -> list[dict]:
-        return self.get("/v1/analytics/item-stats", params)
+        return self.analytics("/v1/analytics/item-stats", params)
+
+    def ability_order_tree(self, days: int = 14, **params) -> list[dict]:
+        """The default 30-day window times out for this one (see analytics); 14 days answers
+        in ~2 s with ~0.5 MB."""
+        return self.get("/v1/analytics/ability-order-tree",
+                        {"min_matches": 500, "min_unix_timestamp": since_days(days)} | params,
+                        ttl_s=12 * 3600)
+
+    def ability(self, ability_id: int) -> dict:
+        # one asset at a time: the whole ability list is ~4 MB
+        return self.get(f"/v1/assets/items/{int(ability_id)}", ttl_s=24 * 3600)
 
     def hero_counter_stats(self, **params) -> list[dict]:
-        return self.get("/v1/analytics/hero-counter-stats", params)
+        return self.analytics("/v1/analytics/hero-counter-stats", params)
 
     def active_matches(self, account_id: int) -> list[dict]:
         return self.get("/v1/matches/active", {"account_id": account_id}, ttl_s=0)

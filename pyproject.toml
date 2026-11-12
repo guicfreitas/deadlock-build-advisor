@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deadlock-build-advisor"
-version = "0.1.0"
+version = "0.2.0"
 description = "Counter builds for Deadlock: lane build vs your lane opponents + full build vs the enemy team."
 readme = "README.md"
+license = { text = "Proprietary. All rights reserved. See LICENSE." }
 requires-python = ">=3.10"
 dependencies = []  # stdlib only
 

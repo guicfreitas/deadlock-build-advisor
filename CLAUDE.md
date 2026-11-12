@@ -19,8 +19,23 @@
   (`"m_PlayerDataGlobal__m_nHeroID"`). Teams come back as 2/3 (we map them to 0/1). Lanes are 1/4/6.
   Spectating is limited to ~6/h without an API key; a match spectated within the last hour is cached.
 - `k_eNotInGame` means the match has not started or is already over: retry with backoff.
+- Heavy analytics queries over the default 30-day window can return HTTP 504, and Cloudflare then
+  serves that cached 504 for the same URL. `api.analytics` retries with `min_unix_timestamp` = 14
+  days ago, rounded to the day so the URL stays cacheable. The ability-order tree always uses 14 days.
+- Ability order: `/v1/analytics/ability-order-tree` nodes are prefixes, one entry per upgrade
+  (unlocks included). Deeper prefixes win more (survivorship: winners level faster), so
+  `abilities.pick_order` only compares siblings. Don't show the full path's win rate in the UI.
 - Street Brawl (4v4, `game_mode` 4, every lane reported as 0) is **out of scope**: items are drafted,
   not bought. Only the standard map is supported (casual/unranked and competitive/ranked).
+
+## Self-update (`updater.py`)
+- Follows `https://api.github.com/repos/<update_repo>/releases/latest`. The asset must be named
+  `DeadlockBuildAdvisor-Setup-<ver>.exe` and have a SHA-256 (GitHub's asset `digest` or the
+  `.sha256` file from `build.ps1`); without one it refuses to install.
+- Runs the installer with `/SILENT ... /CURRENTUSER|/ALLUSERS` (keeps the original install scope)
+  and quits; the `skipifnotsilent` [Run] entry in installer.iss reopens the app. Never installs
+  while `Advisor.in_match`. From source it only notifies.
+- The repo was private on 2026-11-12 (the API returns 404 without login), so updates need public releases.
 
 ## What the game itself exposes (tested in a live match, 2026-11-12)
 - No Game State Integration: no GSI code in any client or engine DLL.

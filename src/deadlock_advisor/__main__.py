@@ -102,6 +102,12 @@ def main(argv=None) -> None:
         quit_app()
 
     advisor.on_restart = restart
+    from . import __version__
+    from .updater import Updater
+    advisor.updater = Updater(advisor.state, __version__, cfg.update_repo, frozen=FROZEN,
+                              download_dir=log_dir() / "updates", auto=lambda: cfg.auto_update,
+                              busy=lambda: advisor.in_match, quit_app=quit_app)
+    advisor.updater.start()
     print(f"Deadlock Build Advisor rodando em {url}")
     print(f"Conta: {cfg.account_id or 'NÃO DETECTADA'} · log: {cfg.console_log} · config: {cfg.path}")
     advisor.start_watcher()

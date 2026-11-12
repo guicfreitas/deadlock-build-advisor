@@ -276,5 +276,7 @@ def from_recommendation(rec: dict, account_id: int | None = None) -> HeroBuild:
     enemies = ", ".join(e["name"] for e in rec.get("enemies", []))
     desc = ("Gerado pelo Deadlock Build Advisor"
             + (f" contra {enemies}" if enemies else "") + ".")
+    order = [s["id"] for s in (rec.get("ability_order") or {}).get("steps", [])]
     return HeroBuild(rec["hero"]["id"], name[:MAX_NAME], desc, cats,
+                     ability_order_changes(order) if order else [],
                      author_account_id=account_id or 0)

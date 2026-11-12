@@ -12,7 +12,7 @@ h2 small, h3 { color: var(--dim); font-weight: 400; font-size: 12px; }
 h3 { margin: 12px 0 6px; text-transform: uppercase; letter-spacing: 1px; }
 main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-.hidden { display: none; }
+.hidden { display: none !important; }
 .status { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
 .status.loading .dot { background: var(--acc); animation: pulse 1s infinite; }
@@ -72,3 +72,13 @@ footer { text-align: center; color: var(--dim); font-size: 11px; padding: 16px; 
 .settings .error { border-color: var(--bad); }
 button.ghost { background: transparent; color: var(--acc); border: 1px solid var(--acc); }
 code { color: var(--dim); font-size: 11px; word-break: break-all; }
+.ability-grid { display: grid; gap: 3px; align-items: center; overflow-x: auto; }
+.ab-n { color: var(--dim); font-size: 10px; text-align: center; }
+.ab-name { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab-name img { width: 24px; height: 24px; border-radius: 4px; }
+.ab-name span { overflow: hidden; text-overflow: ellipsis; }
+.ab-cell { height: 24px; border-radius: 4px; background: #1d212c; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+.ab-cell.on { background: var(--spirit); color: #160c22; }
+.ab-cell.on.t0 { background: #5a4a7a; color: var(--fg); }
+.ab-cell.on.t3 { background: var(--acc); color: #1a1408; }
+.update { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border-color: var(--acc); }

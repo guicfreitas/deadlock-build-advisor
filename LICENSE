@@ -1,0 +1,64 @@
+Deadlock Build Advisor
+Copyright (c) 2026 GuicF. Todos os direitos reservados. / All rights reserved.
+
+PORTUGUÊS
+
+Este software, incluindo o código-fonte, os instaladores, a interface, os textos e as
+imagens ("o Software"), é propriedade exclusiva do autor. O código é publicado apenas
+para consulta. Nenhuma licença de código aberto é concedida.
+
+1. Permitido:
+   a) ver o código-fonte neste repositório;
+   b) baixar os instaladores oficiais publicados pelo autor e usar o Software para fins
+      pessoais e não comerciais.
+
+2. Proibido, sem autorização prévia e por escrito do autor:
+   a) copiar ou reproduzir o Software, no todo ou em parte;
+   b) modificar o Software, traduzi-lo ou criar obras derivadas dele;
+   c) distribuir, publicar, sublicenciar, alugar ou emprestar o Software ou cópias dele;
+   d) vender o Software ou usá-lo, no todo ou em parte, em qualquer produto ou serviço
+      comercial;
+   e) remover ou alterar este aviso de direitos autorais.
+
+3. Os Termos de Serviço do GitHub permitem que usuários do GitHub vejam e façam "fork"
+   de repositórios públicos dentro do GitHub. Isso não concede nenhum outro direito: um
+   fork não pode ser modificado, distribuído, usado fora do GitHub nem vendido.
+
+4. O SOFTWARE É FORNECIDO "COMO ESTÁ", SEM GARANTIA DE QUALQUER TIPO. O autor não se
+   responsabiliza por danos decorrentes do uso do Software.
+
+5. Este projeto não é afiliado à Valve Corporation. Deadlock e os nomes de heróis e itens
+   são marcas da Valve.
+
+Para pedir autorização, abra uma issue no repositório.
+
+ENGLISH
+
+This software, including its source code, installers, interface, texts and images
+("the Software"), is the exclusive property of the author. The source is published for
+viewing only. No open-source license is granted.
+
+1. You may:
+   a) view the source code in this repository;
+   b) download the official installers published by the author and use the Software for
+      personal, non-commercial purposes.
+
+2. You may not, without the author's prior written permission:
+   a) copy or reproduce the Software, in whole or in part;
+   b) modify, translate or create derivative works of the Software;
+   c) distribute, publish, sublicense, rent or lend the Software or copies of it;
+   d) sell the Software or use it, in whole or in part, in any commercial product or
+      service;
+   e) remove or alter this copyright notice.
+
+3. GitHub's Terms of Service let GitHub users view and fork public repositories within
+   GitHub. That grants no other right: a fork may not be modified, distributed, used
+   outside GitHub or sold.
+
+4. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. The author is not
+   liable for any damages arising from the use of the Software.
+
+5. This project is not affiliated with Valve Corporation. Deadlock and the hero and item
+   names are trademarks of Valve.
+
+To ask for permission, open an issue in the repository.

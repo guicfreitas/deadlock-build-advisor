@@ -92,6 +92,11 @@ def make_handler(advisor: Advisor):
                     advisor.reload_settings()
                 return self._json(result | {"settings": config.settings_view(advisor.cfg)},
                                   400 if result["errors"] else 200)
+            if path == "/api/update":
+                if not advisor.updater:
+                    return self._json({"error": "atualização automática indisponível"}, 409)
+                r = advisor.updater.install()
+                return self._json(r, 409 if r.get("error") else 200)
             if path == "/api/restart":
                 if not advisor.on_restart:
                     return self._json({"error": "reinício automático indisponível; feche e abra o app"}, 409)

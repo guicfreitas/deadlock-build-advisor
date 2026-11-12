@@ -89,6 +89,8 @@ Todas as opções são opcionais e ficam na seção **Configurações** da pági
 | `port` | `8787` | porta da página web local |
 | `overlay` | `true` | liga ou desliga o overlay |
 | `overlay_alpha` | `0.88` | transparência do overlay |
+| `auto_update` | `true` | baixa e instala versões novas sozinho, fora de partida |
+| `update_repo` | `guicfreitas/deadlock-build-advisor` | repositório do GitHub cujas *releases* o app segue |
 | `engine.lane_window_s` | `600` | duração da fase de lane, em segundos |
 | `engine.lane_budget` | `5600` | almas gastas na lane |
 | `engine.filters` | `{}` | filtros da API, ex.: `{"min_average_badge": 80}` para considerar só partidas de rank alto |
@@ -111,6 +113,11 @@ console.log  ──(match_id=...)──►  watcher  ──►  deadlock-api liv
    - as win rates são suavizadas (prior bayesiano) para que itens com poucas partidas não dominem a lista;
    - o efeito do matchup em si (por exemplo, "Infernus perde 3% a mais contra Haze") é descontado, para que o lift meça o item e não o confronto;
    - a build de lane usa só compras feitas até `lane_window_s`, filtradas para jogadores que estavam na mesma lane do inimigo.
+4. A **ordem das habilidades** vem da árvore de ordens de upgrade dos jogadores do herói (`/v1/analytics/ability-order-tree`, últimos 14 dias). O app percorre a árvore ponto a ponto: segue a escolha mais comum e só troca por outra quando ela é usada por pelo menos 25% dos jogadores daquele passo e ganha mais. A win rate só é comparada entre escolhas do mesmo passo, porque ordens mais longas ganham mais só por pertencerem a partidas vencidas (quem ganha sobe de nível mais rápido). A ordem vai junto no guia colado no jogo.
+
+### Atualizações
+
+O app instalado confere as *releases* do GitHub ao abrir e a cada 6 horas. Quando sai uma versão nova, ele baixa o instalador, confere o SHA-256 e instala sozinho assim que você não estiver em partida; o app fecha e reabre em poucos segundos. Também dá para instalar na hora pelo botão **Atualizar agora**, ou desligar isso em Configurações.
 
 ## Problemas comuns
 
@@ -136,8 +143,14 @@ Gerar o `.exe` e o instalador (só para quem distribui; o app em si não tem dep
 ```powershell
 python -m venv .venv-build; .venv-build\Scripts\pip install pyinstaller
 winget install JRSoftware.InnoSetup
-powershell -ExecutionPolicy Bypass -File packaging\build.ps1   # -> dist\DeadlockBuildAdvisor-Setup-x.y.z.exe
+powershell -ExecutionPolicy Bypass -File packaging\build.ps1   # -> dist\DeadlockBuildAdvisor-Setup-x.y.z.exe (+ .sha256)
 ```
+
+Publicar uma versão (é o que os apps instalados baixam):
+
+1. Suba `__version__` em `src/deadlock_advisor/__init__.py` (e em `pyproject.toml`) e rode o `build.ps1`.
+2. No GitHub, crie uma *release* com a tag `vX.Y.Z` e anexe `DeadlockBuildAdvisor-Setup-X.Y.Z.exe` e o `.sha256`.
+   O repositório precisa ser público: o app consulta a API do GitHub sem login.
 
 ```
 src/deadlock_advisor/
@@ -151,19 +164,26 @@ src/deadlock_advisor/
   panel.py      janela de controle do app instalado
   steam.py      acha o jogo, a conta e as opções de inicialização pela Steam
   gamebuild.py  exporta a build como guia para o "Colar guia" do jogo
+  abilities.py  escolhe a ordem das habilidades pela árvore de ordens dos jogadores
+  updater.py    confere, baixa e instala versões novas (GitHub Releases)
   counters.py   sugere trocas a partir dos itens que os inimigos compraram
   web/          interface web
 packaging/      ícone, PyInstaller e instalador (Inno Setup)
 tests/
 ```
 
-Contribuições são bem-vindas: abra uma *issue* com bugs ou ideias, ou mande um *pull request*. O projeto usa só a biblioteca padrão do Python; se uma mudança precisar de dependência, discuta antes numa issue.
+Encontrou um bug ou tem uma ideia? Abra uma *issue*. O código é publicado só para consulta (veja a [Licença](#licença)), então *pull requests* e forks modificados não são aceitos.
 
 ## Roadmap
 
 - [ ] Ajustar automaticamente o filtro de rank ao seu rank (`/v1/players/{id}/rank`).
-- [ ] Recomendar a ordem de habilidades (`/v1/analytics/ability-order-stats`) e incluí-la no guia colado.
+- [x] Recomendar a ordem de habilidades e incluí-la no guia colado.
+- [x] Atualização automática.
 - [ ] Atalho global para mostrar ou esconder o overlay.
+
+## Licença
+
+Todos os direitos reservados. O código está aqui só para consulta: você pode ver o código e usar o app pelos instaladores oficiais, para uso pessoal e não comercial. Copiar, modificar, redistribuir ou vender, no todo ou em parte, não é permitido sem autorização por escrito. Veja o arquivo [LICENSE](LICENSE).
 
 ## Créditos
 

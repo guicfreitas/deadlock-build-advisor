@@ -45,6 +45,7 @@ class Advisor:
         self.api = DeadlockApi(Path(cfg.cache_dir), cfg.api_key)
         self.engine_cfg = self._engine_config()
         self.on_restart = None   # set by the launcher: relaunch the app (settings that need it)
+        self.updater = None      # set by the launcher (updater.Updater)
         self._catalog: Catalog | None = None
         self._job_lock = threading.Lock()
         self._current_job: int | None = None
@@ -119,6 +120,11 @@ class Advisor:
                           live_items=None, copied=None,
                           message=f"Partida {match_id} encontrada. Lendo heróis dos adversários…")
         threading.Thread(target=self._match_job, args=(match_id,), daemon=True).start()
+
+    @property
+    def in_match(self) -> bool:
+        """A match is being tracked (from "match found" until it ends)."""
+        return self._current_job is not None
 
     def _still_current(self, match_id: int) -> bool:
         return self._current_job == match_id

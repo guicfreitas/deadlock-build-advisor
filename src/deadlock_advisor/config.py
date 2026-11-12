@@ -67,6 +67,7 @@ EDITABLE = {
     "port": (_num(1024, 65535), False),
     "overlay": (bool, False),
     "overlay_alpha": (_num(0.3, 1.0, float), False),
+    "auto_update": (bool, True),
     "engine.lane_window_s": (_num(300, 900), True),
     "engine.lane_budget": (_num(1000, 12000), True),
     "engine.filters.min_average_badge": (_opt_int(0, RANKS_MAX_BADGE), True),
@@ -81,6 +82,8 @@ class Config:
     port: int = 8787
     overlay: bool = True
     overlay_alpha: float = 0.88
+    auto_update: bool = True           # install new releases by itself (out of a match)
+    update_repo: str = "guicfreitas/deadlock-build-advisor"  # GitHub repo whose releases we follow
     cache_dir: str = str(Path(os.environ.get("LOCALAPPDATA", Path.home())) / "deadlock-advisor" / "cache")
     engine: dict = field(default_factory=dict)  # overrides for EngineConfig (see engine.py)
     path: Path = field(default_factory=config_path, repr=False)   # where settings are saved
@@ -164,7 +167,7 @@ def settings_view(cfg: Config) -> dict:
     """Current values for the settings screen: what the user set, and what is in effect."""
     effective = {"game_dir": cfg.game_dir, "account_id": cfg.account_id, "api_key": cfg.api_key,
                  "port": cfg.port, "overlay": cfg.overlay, "overlay_alpha": cfg.overlay_alpha,
-                 "engine": cfg.engine}
+                 "auto_update": cfg.auto_update, "engine": cfg.engine}
     return {"path": str(cfg.path),
             "user": {k: _get_path(cfg.user, k) for k in EDITABLE},
             "effective": {k: _get_path(effective, k) for k in EDITABLE}}
@@ -210,6 +213,8 @@ def update_settings(cfg: Config, changes: dict) -> dict:
             cfg.engine = json.loads(json.dumps(user.get("engine", {})))
         elif top == "api_key":
             cfg.api_key = value or os.environ.get("DEADLOCK_API_KEY")
+        elif top == "auto_update":
+            cfg.auto_update = value is not False
         elif top == "account_id":
             cfg.account_id = value
             cfg.detect_account_id()
@@ -217,4 +222,4 @@ def update_settings(cfg: Config, changes: dict) -> dict:
 
 
 DEFAULTS = {"game_dir": "", "account_id": None, "api_key": None, "port": 8787, "overlay": True,
-            "overlay_alpha": 0.88, "engine": {"lane_window_s": 600, "lane_budget": 5600}}
+            "overlay_alpha": 0.88, "auto_update": True, "engine": {"lane_window_s": 600, "lane_budget": 5600}}

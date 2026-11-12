@@ -22,6 +22,8 @@ PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\dist
 OutputBaseFilename=DeadlockBuildAdvisor-Setup-{#AppVersion}
 SetupIconFile=icon.ico
+; shown on the install wizard (skipped by the updater's /SILENT installs)
+LicenseFile=..\LICENSE
 UninstallDisplayIcon={app}\{#AppExe}
 Compression=lzma2/max
 SolidCompression=yes
@@ -48,6 +50,8 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; silent = the app's own updater ran us: reopen it (it already had its page open)
+Filename: "{app}\{#AppExe}"; Parameters: "--restarted --no-browser"; Flags: nowait skipifnotsilent
 
 [UninstallDelete]
 ; the API cache is safe to drop; settings in %APPDATA%\deadlock-advisor are kept on purpose

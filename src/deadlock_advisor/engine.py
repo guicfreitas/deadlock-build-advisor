@@ -18,9 +18,11 @@ Plus per-enemy counter items and hero-vs-hero matchup win rates.
 from __future__ import annotations
 
 import math
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
+from . import abilities
 from .api import DeadlockApi
 
 
@@ -38,6 +40,8 @@ class EngineConfig:
     min_matches: int = 40
     mid_start_s: int = 600
     late_start_s: int = 1500
+    ability_min_rel_pop: float = 0.25  # ability order: a branch needs this share of the top one
+    ability_pop_weight: float = 0.03   # ability order: bonus for the most used branch
     filters: dict = field(default_factory=dict)  # e.g. {"min_average_badge": 60}
 
 
@@ -210,6 +214,48 @@ class Recommender:
                 out[r["enemy_hero_id"]] = {"wr": round(100 * r["wins"] / mp, 1), "matches": mp}
         return out
 
+    def ability_order(self, hero_id: int, filters: dict) -> dict | None:
+        """Recommended ability point order, or None when the API has nothing usable.
+        Optional: a failure here must not cost the player the item build."""
+        try:
+            try:
+                nodes = self.api.ability_order_tree(hero_id=hero_id, **filters)
+            except Exception:  # noqa: BLE001 - heavy query; a shorter window is cheaper
+                nodes = self.api.ability_order_tree(days=7, hero_id=hero_id, **filters)
+            ocfg = abilities.OrderConfig(self.cfg.ability_min_rel_pop, self.cfg.ability_pop_weight,
+                                         self.cfg.prior_strength)
+            steps = abilities.pick_order(nodes, ocfg)
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+            return None
+        if not steps:
+            return None
+        info = {}
+        for a in dict.fromkeys(s.ability_id for s in steps):
+            try:
+                asset = self.api.ability(a)
+            except Exception:  # noqa: BLE001 - a missing name is cosmetic
+                asset = {}
+            info[a] = {"id": a, "class_name": asset.get("class_name"),
+                       "name": asset.get("name") or f"Habilidade {a}",
+                       "image": asset.get("image_webp") or asset.get("image")}
+        # number abilities by their key in game (signature1..4), not by unlock order
+        sig = (self.cat.heroes.get(hero_id) or {}).get("items") or {}
+        key = {sig.get(f"signature{n}"): n for n in range(1, 5)}
+        slot = {a: key.get(v["class_name"]) or n for n, (a, v) in enumerate(info.items(), 1)}
+        for a, v in info.items():
+            v["slot"] = slot[a]
+        last = next((s for s in reversed(steps) if s.wr is not None), None)
+        # no win rate on purpose: a full order's win rate is inflated by survivorship
+        # (players who get that far are mostly in long, won games)
+        return {
+            "abilities": sorted(info.values(), key=lambda v: v["slot"]),
+            "steps": [{"id": s.ability_id, "slot": slot[s.ability_id], "tier": s.tier, "cost": s.cost,
+                       "avg_min": round(s.avg_time_s / 60, 1) if s.avg_time_s else None}
+                      for s in steps],
+            "matches": last.matches if last else 0,
+        }
+
     # ------------------------------------------------------------ public
     def recommend(self, hero_id: int, enemy_ids: list[int], lane_enemy_ids: list[int]) -> dict:
         """Standard 6v6 map (casual/unranked and competitive/ranked).
@@ -223,6 +269,7 @@ class Recommender:
             "full_base": lambda: self.api.item_stats(hero_id=hero_id, **f),
             "mu_lane": lambda: self.matchups(hero_id, lane_enemy_ids, same_lane, f) if lane_enemy_ids else {},
             "mu_all": lambda: self.matchups(hero_id, enemy_ids, False, f),
+            "abilities": lambda: self.ability_order(hero_id, f),
         }
         if lane_enemy_ids:
             jobs["lane_ctx"] = lambda: self.api.item_stats(
@@ -254,6 +301,7 @@ class Recommender:
             "lane_build": [iv(s) for s in lane],
             "lane_cost": sum(self.cat.items[s.item_id]["cost"] for s in lane),
             "full_build": {k: [iv(s) for s in v] for k, v in phases.items()},
+            "ability_order": res["abilities"],
             "settings": {"lane_window_min": round(lw / 60, 1), "filters": f},
             # every scored item's lift vs this lobby (pp): lets mid-match counters pick the
             # best answer for this hero, not just any item that fits the threat

@@ -28,4 +28,8 @@ $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
 if (-not $iscc) { throw "Inno Setup 6 não encontrado (winget install JRSoftware.InnoSetup)" }
 & $iscc /Qp "/DAppVersion=$version" packaging\installer.iss
 if ($LASTEXITCODE) { throw "Inno Setup falhou" }
+# checksum next to the installer: the in-app updater refuses a release without one
+$setup = "dist\DeadlockBuildAdvisor-Setup-$version.exe"
+$hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
+Set-Content -Path "$setup.sha256" -Value "$hash  DeadlockBuildAdvisor-Setup-$version.exe" -Encoding ascii -NoNewline
 Get-ChildItem dist\*.exe | ForEach-Object { "{0}  {1:N1} MB" -f $_.FullName, ($_.Length / 1MB) }

@@ -110,6 +110,10 @@ class Overlay:
         fb = rec["full_build"]
         self._items("MID GAME", fb.get("mid"))
         self._items("LATE GAME", fb.get("late"))
+        order = rec.get("ability_order")
+        if order:
+            self._label("HABILIDADES (tecla, ponto a ponto)", ACC, 9, True)
+            self._label("  " + " ".join(str(st["slot"]) for st in order["steps"]), FG, 10, True)
         self._label("duplo-clique: recolher · botão direito: esconder", DIM, 8)
 
     def _tick(self):
