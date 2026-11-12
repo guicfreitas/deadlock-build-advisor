@@ -58,7 +58,8 @@ function render(s) {
   $("#lane-enemies").innerHTML = rec.lane_enemies.length
     ? rec.lane_enemies.map((h) => heroHtml(h)).join("")
     : `<span class="hint">lane desconhecida — build de lane usa estatística geral</span>`;
-  $("#lane-meta").textContent = `primeiros ${rec.settings.lane_window_min} min · ${rec.lane_cost} almas`;
+  const provisional = s.roster && !s.roster.lanes_locked ? " · lane provisória (trocas ainda abertas)" : "";
+  $("#lane-meta").textContent = `primeiros ${rec.settings.lane_window_min} min · ${rec.lane_cost} almas${provisional}`;
   $("#lane-items").innerHTML = rec.lane_build.map(itemHtml).join("");
   $("#mid-items").innerHTML = rec.full_build.mid.map(itemHtml).join("");
   $("#late-items").innerHTML = rec.full_build.late.map(itemHtml).join("");

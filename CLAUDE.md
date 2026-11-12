@@ -28,8 +28,11 @@
 - So the live broadcast through deadlock-api is the only VAC-safe source for the heroes.
 - Measured delay in a real casual match: about 85 s from "match found" to build ready, which
   landed about 2 s after the game clock started at 0:00. The wait is the Valve broadcast relay.
-- Lanes can be swapped after the first read: `app._watch_lanes` keeps the stream open for 5 min
-  and redoes the lane build when the enemy duo in your lane changes.
+- Lanes can be swapped in the ~30 s prep window. `m_bLaneSwapLocked` says when that is over; on a
+  real match (2026-11-12) the relay was ready 58 s after spectating with all 12 already locked,
+  so `_watch_lanes` only runs while some lane is unlocked (max 5 min).
+- A few minutes in, `m_nAssignedLane` drops back to 0 for everyone (lane phase over?). It is not
+  a swap: `live._merge` keeps the last real lane, otherwise the lane build would be wiped.
 - Item stats are confounded by the matchup itself. `engine.score_items` subtracts the context offset;
   keep that when changing the scoring.
 

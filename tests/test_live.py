@@ -39,3 +39,25 @@ def test_watch_roster_reports_lane_swap():
     watch_roster(FakeApi(LOBBY + SWAP + ["ping"]), 1, ME, seen.append, check_every_s=0)
     assert seen, "expected at least one roster update"
     assert sorted(p.hero_id for p in seen[-1].lane_enemies) == [67, 76]
+
+
+def test_lane_reset_to_zero_keeps_the_known_lane():
+    # seen on a live match: a few minutes in m_nAssignedLane drops to 0 for everyone
+    from deadlock_advisor.live import _merge, _row_to_player
+    row = lambda lane, locked=True: {"m_steamID": 76561197960265728 + 7, "m_iTeamNum": 2,
+                                     "m_nAssignedLane": lane, "m_bLaneSwapLocked": locked, "hero_id": 6}
+    latest = {}
+    assert _merge(latest, _row_to_player(row(4, False)))
+    assert latest[7].lane == 4 and not latest[7].lane_locked
+    assert not _merge(latest, _row_to_player(row(0)))
+    assert latest[7].lane == 4 and latest[7].lane_locked
+    _merge(latest, _row_to_player(row(6)))          # a real swap still goes through
+    assert latest[7].lane == 6
+
+
+def test_roster_lanes_locked():
+    from deadlock_advisor.live import Player, _build_roster
+    players = [Player(i, 1, i % 2, (1, 4, 6)[i % 3], lane_locked=i != 3) for i in range(12)]
+    assert not _build_roster(1, players, 0).lanes_locked
+    players[3].lane_locked = True
+    assert _build_roster(1, players, 0).lanes_locked

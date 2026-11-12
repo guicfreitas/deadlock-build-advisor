@@ -17,7 +17,7 @@ from .api import ApiError, DeadlockApi
 STEAM64_BASE = 76561197960265728
 
 ROSTER_SQL = (
-    'SELECT tick, "m_steamID", "m_iTeamNum", "m_nAssignedLane", '
+    'SELECT tick, "m_steamID", "m_iTeamNum", "m_nAssignedLane", "m_bLaneSwapLocked", '
     '"m_PlayerDataGlobal__m_nHeroID" AS hero_id '
     "FROM CCitadelPlayerController "
     'WHERE "m_PlayerDataGlobal__m_nHeroID" > 0'
@@ -30,6 +30,7 @@ class Player:
     hero_id: int
     team: int
     lane: int | None = None
+    lane_locked: bool = False   # m_bLaneSwapLocked: lane swaps are over for this player
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -41,6 +42,11 @@ class Roster:
     players: list[Player]
     me: Player
     game_mode: str = "normal"  # "normal" (6v6, 3 lanes) | "street_brawl" (4v4, one lane, lane=0)
+
+    @property
+    def lanes_locked(self) -> bool:
+        """Every player's lane is final (the ~30 s swap window at the start is over)."""
+        return bool(self.players) and all(p.lane_locked for p in self.players)
 
     @property
     def enemies(self) -> list[Player]:
@@ -116,11 +122,12 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
             p = _row_to_player(data)
             if p is None:
                 continue
-            if p.account_id not in latest:
+            if _merge(latest, p):
                 last_new_at = time.time()
-            latest[p.account_id] = p
             if complete_at is None and len(latest) >= 12 and all(x.lane for x in latest.values()):
                 complete_at = time.time()
+                if all(x.lane_locked for x in latest.values()):
+                    break  # lanes are final: no need to wait for swaps to settle
         if complete_at and time.time() - complete_at > settle_s:
             break  # keep reading a few seconds so lane swaps settle
         # Street Brawl (8 players, no lanes): done once nobody new shows up for a while.
@@ -143,16 +150,30 @@ def _row_to_player(data) -> Player | None:
     team = int(data["m_iTeamNum"])
     lane = data.get("m_nAssignedLane")
     return Player(sid - STEAM64_BASE, int(data["hero_id"]), team - 2 if team >= 2 else team,
-                  int(lane) if lane else None)
+                  int(lane) if lane else None, bool(data.get("m_bLaneSwapLocked")))
+
+
+def _merge(latest: dict[int, "Player"], p: "Player") -> bool:
+    """Store a fresh row, keeping the last real lane. Returns True for a new player.
+
+    Verified on a live match (2026-11-12): a few minutes in, m_nAssignedLane drops back to 0
+    for everyone. That is not a lane swap, so a known lane is kept."""
+    old = latest.get(p.account_id)
+    if old is not None and p.lane is None and old.lane:
+        p.lane = old.lane
+    latest[p.account_id] = p
+    return old is None
 
 
 def watch_roster(api: DeadlockApi, match_id: int, account_id: int,
                  on_change: Callable[[Roster], None],
                  duration_s: float = 300, check_every_s: float = 3.0,
                  should_continue: Callable[[], bool] = lambda: True) -> None:
-    """Keep the broadcast open for `duration_s` and call `on_change` whenever a hero, team or
-    lane changes (early lane swaps). The match was already spectated, so deadlock-api serves it
-    from cache and this does not count against the spectate limit."""
+    """Call `on_change` whenever a hero, team or lane changes (lane swaps in the ~30 s prep
+    window), until every lane is locked or `duration_s` runs out. The match was already
+    spectated, so deadlock-api serves it from cache and this does not count against the
+    spectate limit. In practice the Valve relay delay is longer than the swap window, so
+    the first read is usually already locked and this returns right away."""
     latest: dict[int, Player] = {}
     last_sig = None
     last_check = time.time()
@@ -164,7 +185,7 @@ def watch_roster(api: DeadlockApi, match_id: int, account_id: int,
                 break
             p = _row_to_player(data)
             if p is not None:
-                latest[p.account_id] = p
+                _merge(latest, p)
             if time.time() - last_check < check_every_s or len(latest) < 12:
                 continue
             last_check = time.time()
@@ -175,9 +196,12 @@ def watch_roster(api: DeadlockApi, match_id: int, account_id: int,
             # the first snapshot is reported too: it may already differ from the initial read.
             # The caller decides whether anything relevant (its lane) changed.
             try:
-                on_change(_build_roster(match_id, list(latest.values()), account_id))
+                roster = _build_roster(match_id, list(latest.values()), account_id)
+                on_change(roster)
             except ApiError:
-                pass
+                continue
+            if roster.lanes_locked:
+                break  # lanes are final from here on
     except (ApiError, OSError):
         pass  # best effort: the first recommendation is already on screen
 

@@ -52,7 +52,7 @@ class Advisor:
         self._job_lock = threading.Lock()
         self._current_job: int | None = None
         self.watcher: ConsoleLogWatcher | None = None
-        self.lane_watch_s = 300  # how long to keep watching for lane swaps after the first build
+        self.lane_watch_s = 300  # upper bound on watching for lane swaps (stops once lanes lock)
         self.items_every_s = 60  # how often to sample everyone's items during the match
         self._roster: Roster | None = None
         self._copied: list[int] | None = None   # item order of the build the player pasted in game
@@ -138,8 +138,9 @@ class Advisor:
             return
         # Lanes can still be swapped right after the match starts: keep watching for a few
         # minutes and redo the lane build if the enemy duo in my lane changes.
-        threading.Thread(target=self._watch_lanes, args=(match_id, account, roster),
-                         daemon=True, name="lane-watch").start()
+        if not roster.lanes_locked:  # usually already locked: the relay delay outlasts the swap window
+            threading.Thread(target=self._watch_lanes, args=(match_id, account, roster),
+                             daemon=True, name="lane-watch").start()
         threading.Thread(target=self._watch_items, args=(match_id,),
                          daemon=True, name="items-watch").start()
 
@@ -149,6 +150,7 @@ class Advisor:
         self.state.update(roster={
             "me": roster.me.to_dict(),
             "game_mode": roster.game_mode,
+            "lanes_locked": roster.lanes_locked,
             "players": [p.to_dict() | {"hero": cat.hero_name(p.hero_id)} for p in roster.players],
         }, message=message)
         self.compute(roster.me.hero_id, [p.hero_id for p in roster.enemies],
@@ -159,7 +161,12 @@ class Advisor:
 
         def on_change(new_roster):
             key = _lane_key(new_roster)
-            if key == current["key"] or not self._still_current(match_id):
+            if not self._still_current(match_id):
+                return
+            if key == current["key"]:
+                if new_roster.lanes_locked:
+                    snap = self.state.snapshot().get("roster") or {}
+                    self.state.update(roster=snap | {"lanes_locked": True})
                 return
             current["key"] = key
             names = ", ".join(self.catalog.hero_name(h) for h in key[1]) or "desconhecida"
