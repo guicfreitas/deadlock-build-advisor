@@ -8,3 +8,4 @@ dist/
 # local settings may contain an API key / account id
 config.json
 .cache/
+.venv-build/

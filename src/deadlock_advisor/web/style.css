@@ -60,3 +60,15 @@ footer { text-align: center; color: var(--dim); font-size: 11px; padding: 16px; 
 .mini.weapon { border-color: var(--weapon); } .mini.vitality { border-color: var(--vitality); } .mini.spirit { border-color: var(--spirit); }
 .mini img { width: 24px; height: 24px; object-fit: contain; }
 .mini.drop { opacity: .6; text-decoration: line-through; }
+.setup { border-color: var(--bad); }
+.checklist { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.checklist li { display: flex; gap: 8px; align-items: flex-start; }
+.checklist li.ok span { color: var(--good); } .checklist li.bad span { color: var(--bad); }
+.settings { display: grid; gap: 12px; margin-top: 10px; max-width: 560px; }
+.settings label { display: grid; gap: 4px; }
+.settings label.check { display: flex; align-items: center; gap: 8px; }
+.settings small { color: var(--dim); font-size: 11px; }
+.settings .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.settings .error { border-color: var(--bad); }
+button.ghost { background: transparent; color: var(--acc); border: 1px solid var(--acc); }
+code { color: var(--dim); font-size: 11px; word-break: break-all; }

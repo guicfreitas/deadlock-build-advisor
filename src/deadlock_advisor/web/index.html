@@ -13,6 +13,12 @@
   </header>
 
   <main>
+    <section id="setup" class="card setup hidden">
+      <h2>Falta pouco para funcionar</h2>
+      <ul id="setup-list" class="checklist"></ul>
+      <button id="setup-recheck" class="ghost">Verificar de novo</button>
+    </section>
+
     <section id="swaps" class="card swaps hidden">
       <h2>Troque para counterar <small id="swaps-meta"></small></h2>
       <div id="swap-list" class="swap-list"></div>
@@ -45,6 +51,48 @@
     <section id="enemies" class="card hidden">
       <h2>Adversários <small>win rate do seu herói contra cada um · itens que mais ajudam</small></h2>
       <div id="enemy-list" class="enemy-grid"></div>
+    </section>
+
+    <section class="card">
+      <details id="settings">
+        <summary>Configurações</summary>
+        <form id="settings-form" class="settings" autocomplete="off">
+          <label>Pasta do Deadlock
+            <input name="game_dir" placeholder="detectada pela Steam">
+            <small>Deixe vazio para detectar automaticamente. Na Steam: Deadlock → Propriedades → Arquivos instalados → Procurar.</small></label>
+          <label>Sua conta (SteamID3)
+            <input name="account_id" inputmode="numeric" placeholder="detectada pela Steam">
+            <small>Deixe vazio para usar a conta logada na Steam.</small></label>
+          <label>Rank das partidas usadas nas estatísticas
+            <select name="engine.filters.min_average_badge">
+              <option value="">Todos os ranks</option>
+              <option value="31">Alchemist ou acima</option>
+              <option value="51">Ritualist ou acima</option>
+              <option value="71">Archon ou acima</option>
+              <option value="91">Phantom ou acima</option>
+              <option value="101">Ascendant ou acima</option>
+            </select>
+            <small>Ranks altos = dados de jogadores melhores, mas com menos partidas.</small></label>
+          <label>Duração da fase de lane (segundos)
+            <input name="engine.lane_window_s" type="number" min="300" max="900" step="30"></label>
+          <label>Almas gastas na lane
+            <input name="engine.lane_budget" type="number" min="1000" max="12000" step="100"></label>
+          <label class="check"><input name="overlay" type="checkbox"> Mostrar overlay por cima do jogo</label>
+          <label>Transparência do overlay
+            <input name="overlay_alpha" type="range" min="0.3" max="1" step="0.02"></label>
+          <label>Porta da página local
+            <input name="port" type="number" min="1024" max="65535"></label>
+          <label>Chave da deadlock-api (opcional)
+            <input name="api_key" placeholder="sem chave: ~6 partidas espectadas por hora">
+            <small>Só se você jogar muitas partidas seguidas.</small></label>
+          <div class="actions">
+            <button type="submit">Salvar</button>
+            <button type="button" id="settings-restart" class="ghost hidden">Reiniciar o app para aplicar</button>
+            <span id="settings-msg" class="hint"></span>
+          </div>
+          <p class="hint">Arquivo: <code id="settings-path"></code></p>
+        </form>
+      </details>
     </section>
 
     <section class="card">

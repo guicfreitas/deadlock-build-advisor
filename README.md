@@ -41,17 +41,27 @@ Por que não ler os heróis direto do jogo? Porque o Deadlock não expõe essa i
 
 ## Início rápido
 
-**Requisitos:** Windows, [Python 3.10+](https://www.python.org/downloads/) (marque "Add Python to PATH" na instalação) e o Deadlock na Steam. Não há nenhuma dependência para instalar.
+1. **Baixe e rode o instalador** `DeadlockBuildAdvisor-Setup-x.y.z.exe` (na página de *Releases*). Não precisa de Python nem de nada além dele, e não pede senha de administrador.
+2. **Ative o log do jogo.** Na Steam: Deadlock → Propriedades → Opções de inicialização → adicione `-condebug`.
+3. **Use janela sem bordas.** No jogo, coloque o modo de tela em *Janela sem bordas* (Borderless). Em tela cheia, o overlay não aparece por cima.
+4. **Abra o app** pelo atalho *Deadlock Build Advisor*. Ele acha sozinho a pasta do jogo e a sua conta pelas bibliotecas da Steam. Se faltar alguma coisa (ex.: o `-condebug`), a página mostra um checklist dizendo o que fazer.
+5. **Entre numa partida.** O status muda para "Partida encontrada" e a build aparece logo em seguida.
 
-1. **Ative o log do jogo.** Na Steam: Deadlock → Propriedades → Opções de inicialização → adicione `-condebug`.
-2. **Use janela sem bordas.** No jogo, coloque o modo de tela em *Janela sem bordas* (Borderless). Em tela cheia, o overlay não aparece por cima.
-3. **Baixe o app.** `git clone` este repositório ou baixe o ZIP (botão *Code* → *Download ZIP*).
-4. **Pronto, não precisa configurar nada.** O app acha a pasta do jogo e a sua conta pelas bibliotecas da Steam, e avisa se faltar o `-condebug`.
-5. **Rode** `run.bat` (ou, no PowerShell: `$env:PYTHONPATH="src"; python -m deadlock_advisor`).
-6. **Entre numa partida.** O status muda para "Partida encontrada" e a build aparece logo em seguida.
+O app abre uma janelinha de controle (abrir a página, mostrar ou esconder o overlay, configurações, sair). Fechar essa janela fecha o app. Se você abrir o atalho de novo com o app já aberto, ele só mostra a página.
 
 > [!TIP]
-> Se a detecção falhar (ex.: Steam instalada num lugar incomum), defina `game_dir` no `config.json`. Para achar a pasta, na Steam: Deadlock → Propriedades → Arquivos instalados → **Procurar**.
+> Se a detecção falhar (ex.: Steam instalada num lugar incomum), defina a pasta do jogo em **Configurações**, na página do app. Para achar a pasta, na Steam: Deadlock → Propriedades → Arquivos instalados → **Procurar**.
+
+<details>
+<summary>Rodar a partir do código-fonte</summary>
+
+Requer [Python 3.10+](https://www.python.org/downloads/), sem dependências externas. `git clone` este repositório e rode `run.bat`, ou:
+
+```powershell
+$env:PYTHONPATH="src"; python -m deadlock_advisor
+```
+
+</details>
 
 ## Uso
 
@@ -69,7 +79,7 @@ python -m deadlock_advisor --match-id 135235741   # força uma partida específi
 
 ## Configuração
 
-Todas as opções são opcionais. Copie `config.example.json` para `config.json` e mude só o que precisar.
+Todas as opções são opcionais e ficam na seção **Configurações** da página do app, com explicação de cada campo. Elas são salvas em `%APPDATA%\deadlock-advisor\config.json` (rodando a partir do código-fonte, um `config.json` na pasta do projeto tem prioridade). Só o que você mudar é gravado: o resto continua automático.
 
 | Campo | Padrão | Para quê |
 |---|---|---|
@@ -83,7 +93,7 @@ Todas as opções são opcionais. Copie `config.example.json` para `config.json`
 | `engine.lane_budget` | `5600` | almas gastas na lane |
 | `engine.filters` | `{}` | filtros da API, ex.: `{"min_average_badge": 80}` para considerar só partidas de rank alto |
 
-O `config.json` fica fora do Git, então a sua chave e o seu ID não vão parar no repositório.
+A pasta do jogo e a porta só mudam depois de reiniciar o app; a página oferece um botão para isso. O resto vale na hora. O log fica em `%LOCALAPPDATA%\deadlock-advisor\advisor.log`.
 
 ## Como funciona
 
@@ -121,6 +131,14 @@ pip install pytest
 python -m pytest -q -p no:anyio
 ```
 
+Gerar o `.exe` e o instalador (só para quem distribui; o app em si não tem dependências):
+
+```powershell
+python -m venv .venv-build; .venv-build\Scripts\pip install pyinstaller
+winget install JRSoftware.InnoSetup
+powershell -ExecutionPolicy Bypass -File packaging\build.ps1   # -> dist\DeadlockBuildAdvisor-Setup-x.y.z.exe
+```
+
 ```
 src/deadlock_advisor/
   logwatch.py   lê o console.log e detecta início e fim de partida
@@ -130,7 +148,12 @@ src/deadlock_advisor/
   app.py        orquestração e estado compartilhado
   server.py     servidor web local e API JSON
   overlay.py    overlay tkinter sempre no topo
+  panel.py      janela de controle do app instalado
+  steam.py      acha o jogo, a conta e as opções de inicialização pela Steam
+  gamebuild.py  exporta a build como guia para o "Colar guia" do jogo
+  counters.py   sugere trocas a partir dos itens que os inimigos compraram
   web/          interface web
+packaging/      ícone, PyInstaller e instalador (Inno Setup)
 tests/
 ```
 

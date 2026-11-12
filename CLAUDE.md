@@ -2,6 +2,11 @@
 
 - Python 3.10+, **stdlib only** (urllib, http.server, tkinter). Don't add dependencies without asking.
 - Run: `$env:PYTHONPATH="src"; python -m deadlock_advisor` · Tests: `python -m pytest -q -p no:anyio`.
+- Package: `packaging\build.ps1` (PyInstaller in `.venv-build` + Inno Setup 6; both build-only, approved
+  by the user). The windowed .exe has `sys.stdout is None`: `__main__` redirects it to
+  `%LOCALAPPDATA%\deadlock-advisor\advisor.log`. Settings live in `%APPDATA%\deadlock-advisor`.
+- The web server binds with SO_EXCLUSIVEADDRUSE: http.server's SO_REUSEADDR lets two copies share
+  the port on Windows. A second launch opens the page of the running one and exits.
 - UI text and README are in Brazilian Portuguese; code/comments in English.
 - **Never** inject into the game process, read its memory, or modify game files: VAC risk. Only read
   `game/citadel/console.log` (needs `-condebug`) and call https://api.deadlock-api.com.

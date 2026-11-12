@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from urllib.parse import urlparse
 
-from . import clipboard, gamebuild
+from . import clipboard, config, gamebuild
 from .app import Advisor
 
 STATIC = {"/": ("index.html", "text/html; charset=utf-8"),
@@ -45,6 +45,8 @@ def make_handler(advisor: Advisor):
                 check = advisor.setup_check()
                 advisor.state.update(setup=check)
                 return self._json(check)
+            if path == "/api/settings":
+                return self._json(config.settings_view(advisor.cfg))
             if path == "/api/heroes":
                 try:
                     cat = advisor.catalog
@@ -79,6 +81,23 @@ def make_handler(advisor: Advisor):
                 copied = clipboard.set_text(code)
                 advisor.mark_copied(build)  # from now on, counters compare against this build
                 return self._json({"ok": True, "copied": copied, "code": code})
+            if path == "/api/settings":
+                if not isinstance(body, dict):
+                    return self._json({"error": "json inválido"}, 400)
+                try:
+                    result = config.update_settings(advisor.cfg, body)
+                except OSError as e:
+                    return self._json({"error": f"não consegui salvar: {e}"}, 500)
+                if not result["errors"]:
+                    advisor.reload_settings()
+                return self._json(result | {"settings": config.settings_view(advisor.cfg)},
+                                  400 if result["errors"] else 200)
+            if path == "/api/restart":
+                if not advisor.on_restart:
+                    return self._json({"error": "reinício automático indisponível; feche e abra o app"}, 409)
+                self._json({"ok": True})
+                threading.Timer(0.5, advisor.on_restart).start()
+                return None
             if path == "/api/match":
                 try:
                     advisor.start_match(int(body["match_id"]))
@@ -97,7 +116,36 @@ def _safe(fn, *a):
         pass
 
 
-def serve(advisor: Advisor, port: int) -> ThreadingHTTPServer:
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), make_handler(advisor))
+class PortInUse(OSError):
+    pass
+
+
+class _ExclusiveServer(ThreadingHTTPServer):
+    """http.server turns on SO_REUSEADDR, and on Windows that lets a second process bind the
+    same port: two copies of the app would run side by side. Own the port exclusively so a
+    second launch fails to bind and opens the page of the first one instead."""
+    allow_reuse_address = False
+    daemon_threads = True
+
+    def server_bind(self):
+        import socket
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
+def serve(advisor: Advisor, port: int, wait_s: float = 0) -> ThreadingHTTPServer:
+    """Start the web UI. wait_s > 0 retries while the port is busy (a restart: the old
+    process is still shutting down)."""
+    import time
+    deadline = time.time() + wait_s
+    while True:
+        try:
+            httpd = _ExclusiveServer(("127.0.0.1", port), make_handler(advisor))
+            break
+        except OSError as e:
+            if time.time() >= deadline:
+                raise PortInUse(f"porta {port} em uso") from e
+            time.sleep(0.3)
     threading.Thread(target=httpd.serve_forever, daemon=True, name="web").start()
     return httpd

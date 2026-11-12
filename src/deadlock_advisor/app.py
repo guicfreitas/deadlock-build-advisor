@@ -43,11 +43,8 @@ class Advisor:
         self.cfg = cfg
         self.state = AppState()
         self.api = DeadlockApi(Path(cfg.cache_dir), cfg.api_key)
-        ecfg = EngineConfig()
-        for f in fields(EngineConfig):
-            if f.name in cfg.engine:
-                setattr(ecfg, f.name, cfg.engine[f.name])
-        self.engine_cfg = ecfg
+        self.engine_cfg = self._engine_config()
+        self.on_restart = None   # set by the launcher: relaunch the app (settings that need it)
         self._catalog: Catalog | None = None
         self._job_lock = threading.Lock()
         self._current_job: int | None = None
@@ -56,6 +53,19 @@ class Advisor:
         self.items_every_s = 60  # how often to sample everyone's items during the match
         self._roster: Roster | None = None
         self._copied: list[int] | None = None   # item order of the build the player pasted in game
+
+    def _engine_config(self) -> EngineConfig:
+        ecfg = EngineConfig()
+        for f in fields(EngineConfig):
+            if f.name in self.cfg.engine:
+                setattr(ecfg, f.name, self.cfg.engine[f.name])
+        return ecfg
+
+    def reload_settings(self) -> None:
+        """Pick up settings changed on the settings screen (the ones that work live)."""
+        self.engine_cfg = self._engine_config()
+        self.api.api_key = self.cfg.api_key
+        self.state.update(setup=self.setup_check())
 
     @property
     def catalog(self) -> Catalog:

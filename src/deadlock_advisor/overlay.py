@@ -4,7 +4,8 @@ Works with Deadlock in *Borderless Windowed* / *Windowed* mode (exclusive
 fullscreen draws over any other window). It is a separate window - nothing is
 injected into the game.
 
-Controls: drag with left mouse, double-click to collapse/expand, right-click to close.
+Controls: drag with left mouse, double-click to collapse/expand, right-click to hide
+(the control panel brings it back).
 """
 from __future__ import annotations
 
@@ -17,9 +18,10 @@ SLOT_COLORS = {"weapon": "#e39a3b", "vitality": "#6fbf5a", "spirit": "#a77be0"}
 
 
 class Overlay:
-    def __init__(self, advisor: Advisor, alpha: float = 0.88):
+    def __init__(self, advisor: Advisor, alpha: float = 0.88, master: tk.Misc | None = None):
         self.advisor = advisor
-        self.root = tk.Tk()
+        self.root = tk.Toplevel(master) if master is not None else tk.Tk()
+        self.hidden = False
         self.root.title("Deadlock Build Advisor")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
@@ -34,9 +36,21 @@ class Overlay:
             w.bind("<ButtonPress-1>", self._start_drag)
             w.bind("<B1-Motion>", self._drag)
             w.bind("<Double-Button-1>", self._toggle)
-            w.bind("<Button-3>", lambda e: self.root.destroy())
+            w.bind("<Button-3>", lambda e: self.hide())
         self._dx = self._dy = 0
         self.root.after(200, self._tick)
+
+    def hide(self):
+        self.hidden = True
+        self.root.withdraw()
+
+    def show(self):
+        self.hidden = False
+        self.root.deiconify()
+        self.root.attributes("-topmost", True)
+
+    def toggle_visible(self):
+        self.show() if self.hidden else self.hide()
 
     def _start_drag(self, e):
         self._dx, self._dy = e.x_root - self.root.winfo_x(), e.y_root - self.root.winfo_y()
@@ -80,6 +94,11 @@ class Overlay:
         if not rec:
             self._label(s.get("message", ""), DIM, 9, wraplength=320)
             return
+        for sw in ((s.get("live_items") or {}).get("suggestions") or [])[:2]:
+            buy, drop = sw["buy"]["name"], (sw.get("instead_of") or {}).get("name")
+            text = f"TROQUE: {buy} em vez de {drop}" if drop else f"COMPRE TAMBÉM: {buy}"
+            self._label(text, ACC, 9, True, wraplength=340)
+            self._label(f"  contra {sw['threat_label']}", DIM, 8, wraplength=340)
         if rec["lane_enemies"]:
             parts = []
             for e in rec["lane_enemies"]:
@@ -91,7 +110,7 @@ class Overlay:
         fb = rec["full_build"]
         self._items("MID GAME", fb.get("mid"))
         self._items("LATE GAME", fb.get("late"))
-        self._label("duplo-clique: recolher · botão direito: fechar", DIM, 8)
+        self._label("duplo-clique: recolher · botão direito: esconder", DIM, 8)
 
     def _tick(self):
         s = self.advisor.state.snapshot()

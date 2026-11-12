@@ -44,7 +44,30 @@ function renderSwaps(s) {
   }).join("");
 }
 
+const SETUP_HELP = {
+  steam: "Steam não encontrada. Instale a Steam ou defina a pasta do Deadlock em Configurações.",
+  game: "Deadlock não encontrado nas bibliotecas da Steam. Defina a pasta em Configurações.",
+  account: "Conta não detectada. Abra a Steam logado na sua conta, ou defina o SteamID3 em Configurações.",
+  condebug: "Adicione <b>-condebug</b> em Steam → Deadlock → Propriedades → Opções de inicialização, e reabra o jogo.",
+  log: "Abra o Deadlock uma vez com <b>-condebug</b> para criar o console.log.",
+};
+
+function renderSetup(c) {
+  if (!c) return;
+  const rows = [
+    ["steam", c.steam_found, "Steam encontrada"],
+    ["game", !!c.game_dir, c.game_dir ? `Deadlock em ${esc(c.game_dir)}` : "Pasta do Deadlock"],
+    ["account", !!c.account_id, c.account_id ? `Conta ${c.account_id}` : "Sua conta"],
+    ["condebug", c.condebug !== false, c.condebug === null ? "-condebug (não consegui conferir)" : "-condebug nas opções de inicialização"],
+    ["log", c.console_log, "console.log do jogo"],
+  ];
+  $("#setup").classList.toggle("hidden", !!c.ok);
+  $("#setup-list").innerHTML = rows.map(([k, ok, label]) =>
+    `<li class="${ok ? "ok" : "bad"}"><span>${ok ? "✔" : "✖"}</span><div>${label}${ok ? "" : `<div class="hint">${SETUP_HELP[k]}</div>`}</div></li>`).join("");
+}
+
 function render(s) {
+  renderSetup(s.setup);
   renderSwaps(s);
   $("#copybar").classList.toggle("hidden", !s.recommendation);
   if (s.copied) $("#copy-msg").innerHTML = `Copiado “${esc(s.copied.name)}”. As trocas acima comparam com essa build.`;
@@ -114,5 +137,52 @@ $("#copy-build").addEventListener("click", async () => {
 // refresh "lida há Xs" between polls
 setInterval(() => { const m = $("#swaps-meta"); if (m && lastState) renderSwaps(lastState); }, 15000);
 
+$("#setup-recheck").addEventListener("click", async () => {
+  try { renderSetup(await (await fetch("/api/setup")).json()); } catch {}
+});
+
+// ---------- settings ----------
+const form = $("#settings-form");
+const FALLBACK = { "engine.lane_window_s": 600, "engine.lane_budget": 5600 };
+function fillSettings(v) {
+  $("#settings-path").textContent = v.path;
+  for (const el of form.elements) {
+    if (!el.name) continue;
+    const user = v.user[el.name], eff = v.effective[el.name];
+    if (el.type === "checkbox") el.checked = !!(user ?? eff);
+    else if (el.name === "game_dir" || el.name === "account_id") {
+      el.value = user ?? "";
+      if (eff) el.placeholder = `detectada: ${eff}`;
+    } else el.value = user ?? eff ?? FALLBACK[el.name] ?? "";
+  }
+}
+async function loadSettings() {
+  try { fillSettings(await (await fetch("/api/settings")).json()); } catch {}
+}
+form.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const body = {};
+  for (const el of form.elements) {
+    if (el.name) body[el.name] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  for (const el of form.querySelectorAll(".error")) el.classList.remove("error");
+  const r = await (await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json();
+  if (r.errors && Object.keys(r.errors).length) {
+    for (const k of Object.keys(r.errors)) form.elements[k]?.classList.add("error");
+    $("#settings-msg").textContent = Object.entries(r.errors).map(([k, m]) => `${k}: ${m}`).join(" · ");
+    return;
+  }
+  if (r.settings) fillSettings(r.settings);
+  const restart = (r.restart || []).length > 0;
+  $("#settings-restart").classList.toggle("hidden", !restart);
+  $("#settings-msg").textContent = restart ? "Salvo. Algumas mudanças só valem depois de reiniciar." : "Salvo.";
+});
+$("#settings-restart").addEventListener("click", async () => {
+  const r = await (await fetch("/api/restart", { method: "POST" })).json().catch(() => ({}));
+  $("#settings-msg").textContent = r.error || "Reiniciando…";
+  if (!r.error) setTimeout(() => location.reload(), 4000);
+});
+
 poll();
 setupManual();
+loadSettings();
