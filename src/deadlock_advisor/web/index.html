@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Deadlock Build Advisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -13,10 +16,79 @@
   </header>
 
   <main>
-    <section id="setup" class="card setup hidden">
-      <h2>Falta pouco para funcionar</h2>
-      <ul id="setup-list" class="checklist"></ul>
-      <button id="setup-recheck" class="ghost">Verificar de novo</button>
+    <section id="update" class="card update hidden">
+      <span id="update-msg"></span>
+      <button id="update-go" class="hidden">Atualizar agora</button>
+    </section>
+    <!-- first run: one step at a time, each one checks itself -->
+    <section id="onboard" class="card onboard hidden">
+      <span class="eyebrow">Primeira vez</span>
+      <h2>Vamos deixar tudo pronto <small>3 passos, uma vez só</small></h2>
+      <ol class="steps">
+        <li data-step="find">
+          <div class="step-head"><span class="num">1</span><b>Encontrar o Deadlock</b><span class="state"></span></div>
+          <div class="step-body">
+            <p id="find-msg">Procurando a Steam e o Deadlock…</p>
+            <button class="ghost" data-open-settings>Escolher a pasta manualmente</button>
+          </div>
+        </li>
+        <li data-step="condebug">
+          <div class="step-head"><span class="num">2</span><b>Ativar o log do jogo</b><span class="state"></span></div>
+          <div class="step-body">
+            <p>É assim que o app sabe quando uma partida começa. Nada é injetado no jogo.</p>
+            <ol class="howto">
+              <li>Na <b>Steam</b>, clique com o botão direito em <b>Deadlock</b> → <b>Propriedades…</b></li>
+              <li>Em <b>Geral</b> → <b>Opções de inicialização</b>, cole:
+                <span class="code-copy"><code class="big">-condebug</code><button id="copy-condebug" class="ghost">Copiar</button></span></li>
+              <li>Feche a janela de propriedades.</li>
+            </ol>
+            <button id="condebug-done">Já adicionei</button>
+          </div>
+        </li>
+        <li data-step="launch">
+          <div class="step-head"><span class="num">3</span><b>Abrir o Deadlock</b><span class="state"></span></div>
+          <div class="step-body">
+            <p>Abra o Deadlock pela Steam (se já estava aberto, feche e abra de novo).
+               Este passo se completa sozinho quando o jogo abrir.</p>
+            <p class="hint"><span class="spinner"></span> Esperando o jogo…</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- set up, no match yet: what happens next -->
+    <section id="guide" class="card guide hidden">
+      <span class="eyebrow">Pronto para jogar</span>
+      <h2>Como usar</h2>
+      <ol class="flow">
+        <li data-flow="queue"><span class="num">1</span><div><b>Entre numa partida</b>
+          <small>Casual ou ranqueada, no mapa normal. Deixe esta janela aberta.</small></div></li>
+        <li data-flow="loading"><span class="num">2</span><div><b>Espere 1 a 2 minutos</b>
+          <small>O app lê os heróis da partida e monta a build contra a sua lane.</small></div></li>
+        <li data-flow="ready"><span class="num">3</span><div><b>Copie e cole no jogo</b>
+          <small>Loja → Explorar guias → Criar guia → <b>Colar guia</b>.</small></div></li>
+      </ol>
+    </section>
+
+
+
+    <!-- in a match: the one thing to do first -->
+    <section id="now" class="card now hidden">
+      <span class="eyebrow">Faça agora</span>
+      <div class="row">
+        <div id="me" class="hero-big"></div>
+        <div class="vs">VS</div>
+        <div id="lane-enemies" class="hero-list"></div>
+      </div>
+      <div class="now-actions">
+        <button id="copy-build" class="big">Copiar build para o jogo</button>
+        <ol class="paste-steps">
+          <li>No jogo, abra a <b>Loja</b></li>
+          <li><b>Explorar guias</b> → <b>Criar guia</b></li>
+          <li><b>Colar guia</b> e salve</li>
+        </ol>
+      </div>
+      <p id="copy-msg" class="hint"></p>
     </section>
 
     <section id="swaps" class="card swaps hidden">
@@ -24,43 +96,33 @@
       <div id="swap-list" class="swap-list"></div>
     </section>
 
-    <section id="update" class="card update hidden">
-      <span id="update-msg"></span>
-      <button id="update-go" class="hidden">Atualizar agora</button>
-    </section>
-
-    <section id="copybar" class="card copybar hidden">
-      <button id="copy-build">Copiar para o jogo</button>
-      <span id="copy-msg" class="hint">No Deadlock: loja → Explorar guias → crie um guia → <b>Colar guia</b>.</span>
-    </section>
-
-    <section id="matchup" class="card hidden">
-      <div class="row">
-        <div id="me" class="hero-big"></div>
-        <div class="vs">VS</div>
-        <div id="lane-enemies" class="hero-list"></div>
-      </div>
-    </section>
-
     <section id="lane" class="card hidden">
-      <h2>Build de lane <small id="lane-meta"></small></h2>
+      <h2>Build de lane <small id="lane-meta"></small>
+        <label class="stats-toggle"><input type="checkbox" id="show-stats"> Mostrar números</label></h2>
+      <p class="hint read-order">Compre da esquerda para a direita. Itens tracejados viram o próximo item.</p>
       <div id="lane-items" class="items"></div>
     </section>
 
     <section id="full" class="card hidden">
-      <h2>Build geral <small>contra o time inimigo inteiro</small></h2>
-      <h3>Mid game</h3><div id="mid-items" class="items"></div>
-      <h3>Late game</h3><div id="late-items" class="items"></div>
+      <details open>
+        <summary><h2>Depois da lane <small>contra o time inimigo inteiro</small></h2></summary>
+        <h3>Mid game</h3><div id="mid-items" class="items"></div>
+        <h3>Late game</h3><div id="late-items" class="items"></div>
+      </details>
     </section>
 
     <section id="abilities" class="card hidden">
-      <h2>Ordem das habilidades <small id="abilities-meta"></small></h2>
-      <div id="ability-grid" class="ability-grid"></div>
+      <details>
+        <summary><h2>Ordem das habilidades <small id="abilities-meta"></small></h2></summary>
+        <div id="ability-grid" class="ability-grid"></div>
+      </details>
     </section>
 
     <section id="enemies" class="card hidden">
-      <h2>Adversários <small>win rate do seu herói contra cada um · itens que mais ajudam</small></h2>
-      <div id="enemy-list" class="enemy-grid"></div>
+      <details>
+        <summary><h2>Adversários <small>win rate contra cada um · itens que mais ajudam</small></h2></summary>
+        <div id="enemy-list" class="enemy-grid"></div>
+      </details>
     </section>
 
     <section class="card">
