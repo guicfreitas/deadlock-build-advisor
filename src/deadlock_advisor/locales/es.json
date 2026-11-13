@@ -108,7 +108,7 @@
   "set.rank": "Rango de las partidas usadas en las estadísticas",
   "set.rank.all": "Todos los rangos",
   "set.rank.above": "{rank} o superior",
-  "set.rank.help": "Rangos altos = datos de mejores jugadores, pero con menos partidas.",
+  "set.rank.help": "Rangos altos = datos de quienes sí compran contras, pero con menos partidas. Por defecto: Archon o superior.",
   "set.lane_window": "Duración de la fase de línea (segundos)",
   "set.lane_budget": "Almas gastadas en la línea",
   "set.overlay": "Mostrar overlay sobre el juego",
@@ -237,5 +237,11 @@
   "gb.against": "Contra {name}: {lift}% de victorias",
   "gb.desc": "Generado por Deadlock Build Advisor",
   "gb.desc_vs": "Generado por Deadlock Build Advisor contra {enemies}.",
-  "fb.discord_copied": "Usuario de Discord copiado."
+  "fb.discord_copied": "Usuario de Discord copiado.",
+
+  "why.gun": "Contra héroes de arma: {heroes}",
+  "why.lane_lift": "{lift}% de victorias contra tu línea",
+  "why.team_lift": "{lift}% de victorias contra este equipo",
+  "item.sell": "vender tras la línea",
+  "item.sell_title": "Los jugadores suelen vender este objeto cuando acaba la línea, para liberar un hueco."
 }

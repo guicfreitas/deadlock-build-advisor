@@ -108,7 +108,7 @@
   "set.rank": "统计所用对局的段位",
   "set.rank.all": "所有段位",
   "set.rank.above": "{rank} 及以上",
-  "set.rank.help": "段位越高 = 玩家越强，但对局数越少。",
+  "set.rank.help": "段位越高 = 数据来自真正会针对出装的玩家，但对局更少。默认：Archon 及以上。",
   "set.lane_window": "对线阶段时长（秒）",
   "set.lane_budget": "对线期花费的魂",
   "set.overlay": "在游戏上方显示悬浮窗",
@@ -237,5 +237,11 @@
   "gb.against": "对阵 {name}：胜率 {lift}%",
   "gb.desc": "由 Deadlock Build Advisor 生成",
   "gb.desc_vs": "由 Deadlock Build Advisor 生成，对阵 {enemies}。",
-  "fb.discord_copied": "已复制 Discord 用户名。"
+  "fb.discord_copied": "已复制 Discord 用户名。",
+
+  "why.gun": "克制枪械型英雄：{heroes}",
+  "why.lane_lift": "对阵你的分路胜率 {lift}%",
+  "why.team_lift": "对阵这支队伍胜率 {lift}%",
+  "item.sell": "对线后出售",
+  "item.sell_title": "对线结束后，玩家通常会卖掉这件物品来腾出格子。"
 }

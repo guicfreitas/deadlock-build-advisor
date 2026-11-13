@@ -22,9 +22,12 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
-from . import abilities
+from . import abilities, lane_rules
 from .api import DeadlockApi
 from .i18n import t
+
+
+DEFAULT_FILTERS = {"min_average_badge": 71}   # 71 = Archon 1
 
 
 @dataclass
@@ -37,14 +40,17 @@ class EngineConfig:
     max_per_slot_type: int = 6
     prior_strength: float = 150.0     # pseudo-matches pulling WR toward the baseline
     lift_weight: float = 3.0          # how much matchup-specific lift matters
-    pop_weight: float = 0.06          # how much popularity (proven picks) matters
-    min_rel_pop: float = 0.04         # ignore items almost nobody buys
+    pop_weight: float = 0.02          # how much popularity matters. It was 0.06 (worth +2 pp of lift),
+                                      # which let the most bought items crowd out good niche ones
+    min_rel_pop: float = 0.02         # ignore items almost nobody buys
     min_matches: int = 40
     mid_start_s: int = 600
     late_start_s: int = 1500
     ability_min_rel_pop: float = 0.25  # ability order: a branch needs this share of the top one
     ability_pop_weight: float = 0.03   # ability order: bonus for the most used branch
-    filters: dict = field(default_factory=dict)  # e.g. {"min_average_badge": 60}
+    # Matches of players at Archon or above by default: on all ranks, half the games are people
+    # who don't counter-buy at all (community feedback). A value of 0 means "no filter".
+    filters: dict = field(default_factory=lambda: dict(DEFAULT_FILTERS))
 
 
 @dataclass
@@ -165,13 +171,16 @@ class Recommender:
         return out
 
     # ---------------------------------------------------------- selection
-    def pick_lane(self, scores: dict[int, ItemScore]) -> list[ItemScore]:
+    def pick_lane(self, scores: dict[int, ItemScore], forced: tuple[int, ...] = ()) -> list[ItemScore]:
         """Best items that fit the laning budget. An upgrade only costs what it adds on top
         of its components (the component is consumed), and a component of an item already
-        picked is skipped: `with_components` puts it back in front of its upgrade."""
+        picked is skipped: `with_components` puts it back in front of its upgrade.
+        `forced` items (lane counter rules) are considered before the best-scoring ones."""
         c = self.cfg
         cands = sorted((s for s in scores.values() if self.cat.items[s.item_id]["item_tier"] <= 2),
                        key=lambda s: -s.score)
+        first = [scores[i] for i in forced if i in scores and self.cat.items[i]["item_tier"] <= 2]
+        cands = first + [s for s in cands if s.item_id not in set(forced)]
         chosen: list[ItemScore] = []
         budget = c.lane_budget
         for s in cands:
@@ -235,12 +244,42 @@ class Recommender:
         consumed = {x for i in ids for x in self.cat.components(i)}
         return [i for i in ids if i not in consumed]
 
-    def pick_full(self, scores: dict[int, ItemScore], lane: list[ItemScore]) -> dict[str, list[ItemScore]]:
+    def lane_sell(self, lane: list[ItemScore], forced: dict[int, str]) -> set[int]:
+        """Lane items players drop after the laning phase to make room: single tier 1 items
+        (an upgrade's component is not dropped, it is consumed) and the lane counters."""
+        ids = {s.item_id for s in lane}
+        sold = set(forced) & ids
+        for s in lane:
+            tier1 = self.cat.items[s.item_id]["item_tier"] == 1
+            if tier1 and not any(s.item_id in self.cat.components(x) for x in ids):
+                sold.add(s.item_id)
+        return sold
+
+    def lane_forced(self, lane_enemy_ids: list[int], scores: dict[int, ItemScore]) -> dict[int, str]:
+        """Lane counter rules: item id -> why. Only items that have stats are forced."""
+        classes = {e: (self.cat.heroes.get(e) or {}).get("class_name") for e in lane_enemy_ids}
+        guns = [e for e, c in classes.items() if c in lane_rules.GUN_HEROES]
+        if not guns:
+            return {}
+        why = t("why.gun", heroes=", ".join(self.cat.hero_name(e) for e in guns))
+        suppressor, barrel = lane_rules.ANTI_GUN_LANE
+        wanted = [suppressor] + ([barrel] if len(guns) > 1 else [])
+        ids = [(self.cat.by_class.get(cls) or {}).get("id") for cls in wanted]
+        out = {i: why for i in ids if i in scores}
+        if not out:  # no usable Suppressor stats: the cheap answer is better than none
+            barrel_id = (self.cat.by_class.get(barrel) or {}).get("id")
+            if barrel_id in scores:
+                out[barrel_id] = why
+        return out
+
+    def pick_full(self, scores: dict[int, ItemScore], lane: list[ItemScore],
+                  sold: frozenset[int] | set[int] = frozenset()) -> dict[str, list[ItemScore]]:
         """Fill the inventory up to `total_slots`. Slots are counted on what is really held at
         the end: an upgrade of an item already in the build takes no new slot (a real match
         on 2026-11-12 ended with Graves' build two slots short of a full inventory)."""
         c = self.cfg
-        taken = [s.item_id for s in lane]
+        lane_ids = {s.item_id for s in lane}
+        taken = [s.item_id for s in lane if s.item_id not in sold]  # sold ones free their slot
 
         def phase(s: ItemScore) -> str:
             if s.avg_buy_s < c.mid_start_s:
@@ -264,7 +303,8 @@ class Recommender:
                 if len(self.held(taken)) >= c.total_slots:
                     break
                 ph = phase(s)
-                if ph not in allowed or s.item_id in taken or (cap is not None and len(phases[ph]) >= cap):
+                if (ph not in allowed or s.item_id in taken or s.item_id in lane_ids
+                        or (cap is not None and len(phases[ph]) >= cap)):
                     continue
                 if any(s.item_id in self.cat.components(t) for t in taken):
                     continue  # already in the build as the first step of an upgrade
@@ -334,12 +374,17 @@ class Recommender:
             "matches": last.matches if last else 0,
         }
 
+    @staticmethod
+    def _why(s: ItemScore, in_context: bool, key: str) -> str:
+        """One short reason shown under an item: only when this matchup really favors it."""
+        return t(key, lift=f"{s.lift * 100:+.1f}") if in_context and s.lift >= 0.005 else ""
+
     # ------------------------------------------------------------ public
     def recommend(self, hero_id: int, enemy_ids: list[int], lane_enemy_ids: list[int]) -> dict:
         """Standard 6v6 map (casual/unranked and competitive/ranked).
         Street Brawl is not supported: items there are drafted, not bought."""
         c = self.cfg
-        f = {"game_mode": "normal"} | c.filters
+        f = {"game_mode": "normal"} | {k: v for k, v in c.filters.items() if v}  # 0 = no filter
         same_lane = True
         lw = c.lane_window_s
         jobs = {
@@ -360,18 +405,27 @@ class Recommender:
             res = {k: fu.result() for k, fu in futs.items()}
 
         lane_scores = self.score_items(res.get("lane_ctx") or res["lane_base"], res["lane_base"])
-        lane = self.pick_lane(lane_scores)
+        if len(lane_scores) < 12:  # too few items with enough matches (high rank + rare duo)
+            lane_scores = self.score_items(res["lane_base"], res["lane_base"])
+        forced = self.lane_forced(lane_enemy_ids, lane_scores)
+        lane = self.pick_lane(lane_scores, tuple(forced))
 
         full_base_scores = self.score_items(res["full_base"], res["full_base"])
         per_enemy = {e: self.score_items(res[f"vs_{e}"], res["full_base"]) for e in enemy_ids}
         full_scores = self.combine(list(per_enemy.values()), full_base_scores, c) if enemy_ids else full_base_scores
-        phases = self.pick_full(full_scores, lane)
+        sold = self.lane_sell(lane, forced)
+        phases = self.pick_full(full_scores, lane, sold)
+        # a sold item that a later pick upgrades into is consumed, not sold
+        for s in phases["mid"] + phases["late"]:
+            sold -= set(self.cat.components(s.item_id))
         counters = self.counters(per_enemy)
 
         iv = self.cat.item_view
-        lane_views = [iv(s) for s in lane]
-        full_views = {"early": lane_views, "mid": [iv(s) for s in phases["mid"]],
-                      "late": [iv(s) for s in phases["late"]]}
+        lane_views = [iv(s) | {"why": forced.get(s.item_id) or self._why(s, bool(lane_enemy_ids), "why.lane_lift"),
+                               "sell_after_lane": s.item_id in sold} for s in lane]
+        why_team = lambda s: self._why(s, bool(enemy_ids), "why.team_lift")  # noqa: E731
+        full_views = {"early": lane_views, "mid": [iv(s) | {"why": why_team(s)} for s in phases["mid"]],
+                      "late": [iv(s) | {"why": why_team(s)} for s in phases["late"]]}
         self.with_components([lane_views, full_views["mid"], full_views["late"]],
                              lane_scores | {k: v for k, v in full_scores.items() if k not in lane_scores})
         mu_lane, mu_all = res["mu_lane"], res["mu_all"]
