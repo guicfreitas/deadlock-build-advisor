@@ -78,6 +78,10 @@ The app is free, has no ads and nothing is locked. If it helps you, you can chip
 - ☕ [Buy Me a Coffee](https://buymeacoffee.com/guicfreitas)
 - 💬 Discord: `_guicf`
 
+## Built with AI assistance
+
+This project was built with help from Claude (an AI coding assistant); the author is a developer working outside their usual platform. The recommendations themselves do **not** come from an AI model: they are plain, deterministic statistics over recent match data, plus a few hand-written lane counter rules (see `src/deadlock_advisor/lane_rules.py`, with sources in the file). Feedback from players who know the game better is what makes the rules better.
+
 ## Development
 
 See [README.pt-BR.md](README.pt-BR.md) for how it works internally (in Portuguese) and `CLAUDE.md` for the project notes.

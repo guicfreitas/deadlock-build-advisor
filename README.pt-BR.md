@@ -137,6 +137,10 @@ O app instalado confere as *releases* do GitHub ao abrir e a cada 6 horas. Quand
 | A build demora a aparecer | Normal: o broadcast da Valve tem atraso de cerca de 1 minuto e meio. |
 | `python` não é reconhecido | O Python não está no PATH. Reinstale marcando "Add Python to PATH". |
 
+## Feito com ajuda de IA
+
+Este projeto foi construído com a ajuda do Claude (um assistente de programação com IA); o autor é desenvolvedor, mas trabalhando fora da sua plataforma de costume. As recomendações **não** vêm de um modelo de IA: são estatísticas simples e determinísticas sobre partidas recentes, mais algumas regras de counter de lane escritas à mão (veja `src/deadlock_advisor/lane_rules.py`, com as fontes no arquivo). O feedback de quem conhece melhor o jogo é o que melhora essas regras.
+
 ## Desenvolvimento
 
 ```powershell

@@ -177,7 +177,8 @@ def settings_view(cfg: Config) -> dict:
     """Current values for the settings screen: what the user set, and what is in effect."""
     effective = {"game_dir": cfg.game_dir, "account_id": cfg.account_id, "api_key": cfg.api_key,
                  "port": cfg.port, "overlay": cfg.overlay, "overlay_alpha": cfg.overlay_alpha,
-                 "auto_update": cfg.auto_update, "language": cfg.language, "engine": cfg.engine}
+                 "auto_update": cfg.auto_update, "language": cfg.language,
+                 "engine": _effective_engine(cfg)}
     return {"path": str(cfg.path),
             "user": {k: _get_path(cfg.user, k) for k in EDITABLE},
             "effective": {k: _get_path(effective, k) for k in EDITABLE}}
@@ -232,4 +233,12 @@ def update_settings(cfg: Config, changes: dict) -> dict:
 
 
 DEFAULTS = {"game_dir": "", "account_id": None, "api_key": None, "port": 8787, "overlay": True,
-            "overlay_alpha": 0.88, "auto_update": True, "language": "", "engine": {"lane_window_s": 600, "lane_budget": 5600}}
+            "overlay_alpha": 0.88, "auto_update": True, "language": "",
+            "engine": {"lane_window_s": 600, "lane_budget": 5600, "filters": {"min_average_badge": 71}}}
+
+
+def _effective_engine(cfg: Config) -> dict:
+    """Engine settings in effect: defaults, then what the user changed (filters merged key by key)."""
+    eng = DEFAULTS["engine"] | cfg.engine
+    eng["filters"] = DEFAULTS["engine"]["filters"] | (cfg.engine.get("filters") or {})
+    return eng

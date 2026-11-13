@@ -14,6 +14,12 @@
   words in texts (git, config.json, field names, raw exceptions). Hero/item names come from
   deadlock-api in the app language (`language` param). The language setting needs a restart.
   Code, comments, logs and CLI help are English. README.md is English, README.pt-BR.md Portuguese.
+- Build quality (from r/DeadlockTheGame feedback, 2026-11-13): stats default to Archon+ matches
+  (`engine.DEFAULT_FILTERS`; badge 0 = all ranks), popularity bias is small (`pop_weight` 0.02),
+  `lane_rules.py` forces hand-written lane counters (Suppressor / Rusted Barrel vs gun heroes; sources
+  in the file; hero detection by data failed, so it is a curated class_name list), and lane items
+  players drop after the lane (`lane_sell`) free their slot in `pick_full`. Items carry a `why` line.
+  "Green Spike" (asked on Reddit) is still unidentified: not an item name in the catalog.
 - `about.py` holds the feedback/support links (`CONTACT_EMAIL`, `CONTACT_DISCORD`, `SUPPORT_LINKS`);
   an empty value hides its button. Support is a quiet card, never a paywall or ads.
 - **Never** inject into the game process, read its memory, or modify game files: VAC risk. Only read

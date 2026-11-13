@@ -41,10 +41,12 @@ function itemHtml(it) {
     ? T("item.stats_title", { min: it.avg_buy_min, n: it.matches, pop: it.pop })
     : T("item.component_title");
   const step = it.upgrades_to ? `<div class="step">${esc(T("item.becomes", { name: it.upgrades_to }))}</div>` : "";
+  const why = it.why ? `<div class="why">${esc(it.why)}</div>` : "";
+  const sell = it.sell_after_lane ? `<div class="sell" title="${esc(T("item.sell_title"))}">${esc(T("item.sell"))}</div>` : "";
   return `<div class="item ${esc(it.slot)}${it.upgrades_to ? " component" : ""}" title="${esc(title)}">
     <img src="${esc(it.image)}" alt="">
     <div><div class="name">${esc(it.name)}${it.active ? " ⚡" : ""}</div>
-    <div class="meta">${cost}${stats}</div>${step}</div></div>`;
+    <div class="meta">${cost}${stats}</div>${step}${why}${sell}</div></div>`;
 }
 
 function miniItem(it, cls = "") {

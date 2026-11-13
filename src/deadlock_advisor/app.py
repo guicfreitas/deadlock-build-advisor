@@ -11,7 +11,7 @@ from . import counters, steam
 from .api import DeadlockApi
 from .config import Config
 from .i18n import t
-from .engine import Catalog, EngineConfig, Recommender
+from .engine import DEFAULT_FILTERS, Catalog, EngineConfig, Recommender
 from .live import Roster, fetch_roster, snapshot_items, watch_roster
 from .logwatch import ConsoleLogWatcher, LogEvent
 
@@ -59,8 +59,11 @@ class Advisor:
     def _engine_config(self) -> EngineConfig:
         ecfg = EngineConfig()
         for f in fields(EngineConfig):
-            if f.name in self.cfg.engine:
+            if f.name in self.cfg.engine and f.name != "filters":
                 setattr(ecfg, f.name, self.cfg.engine[f.name])
+        # user filters override single keys of the defaults; an old `"filters": {}` in a
+        # settings file must not turn the rank default off
+        ecfg.filters = DEFAULT_FILTERS | (self.cfg.engine.get("filters") or {})
         return ecfg
 
     def reload_settings(self) -> None:

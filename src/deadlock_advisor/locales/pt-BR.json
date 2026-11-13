@@ -108,7 +108,7 @@
   "set.rank": "Rank das partidas usadas nas estatísticas",
   "set.rank.all": "Todos os ranks",
   "set.rank.above": "{rank} ou acima",
-  "set.rank.help": "Ranks altos = dados de jogadores melhores, mas com menos partidas.",
+  "set.rank.help": "Ranks altos = dados de quem realmente compra counters, mas com menos partidas. Padrão: Archon ou acima.",
   "set.lane_window": "Duração da fase de lane (segundos)",
   "set.lane_budget": "Almas gastas na lane",
   "set.overlay": "Mostrar overlay por cima do jogo",
@@ -237,5 +237,11 @@
   "gb.against": "Contra {name}: {lift}% de win rate",
   "gb.desc": "Gerado pelo Deadlock Build Advisor",
   "gb.desc_vs": "Gerado pelo Deadlock Build Advisor contra {enemies}.",
-  "fb.discord_copied": "Usuário do Discord copiado."
+  "fb.discord_copied": "Usuário do Discord copiado.",
+
+  "why.gun": "Counter de heróis de arma: {heroes}",
+  "why.lane_lift": "{lift}% de win rate contra a sua lane",
+  "why.team_lift": "{lift}% de win rate contra este time",
+  "item.sell": "vender depois da lane",
+  "item.sell_title": "Os jogadores costumam vender este item quando a lane acaba, para liberar um espaço."
 }
