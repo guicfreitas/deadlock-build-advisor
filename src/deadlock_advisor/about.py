@@ -14,8 +14,7 @@ CONTACT_DISCORD = ""      # an invite or profile link: shows a "Discord" button
 # Support links, shown in order: (button label, URL). The app stays free either way:
 # no ads and no locked features.
 SUPPORT_LINKS: list[tuple[str, str]] = [
-    # ("Ko-fi", "https://ko-fi.com/yourname"),
-    # ("Pix", "https://..."),
+    ("Buy Me a Coffee", "https://buymeacoffee.com/guicfreitas"),
 ]
 
 
