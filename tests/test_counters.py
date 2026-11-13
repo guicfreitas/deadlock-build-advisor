@@ -24,7 +24,7 @@ def test_healing_threat_suggests_antiheal_instead_of_weakest_planned():
     s = out[0]
     assert s["threat"] == "healing" and s["buy"] == 3      # Healbane beats Toxic Bullets on lift
     assert s["instead_of"] == 5                            # weakest planned vitality item
-    assert s["reason"] == "Abrams comprou Leech, Bullet Lifesteal"
+    assert s["reason"] == "Abrams bought Leech, Bullet Lifesteal"
 
 
 def test_weak_threats_and_existing_answers_are_ignored():

@@ -18,7 +18,7 @@ deadlock-advisor = "deadlock_advisor.__main__:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-deadlock_advisor = ["web/*"]
+deadlock_advisor = ["web/*", "locales/*.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

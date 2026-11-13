@@ -70,10 +70,10 @@ def test_from_recommendation():
            "lane_build": [item(10), item(11)], "lane_cost": 2400,
            "full_build": {"early": [item(10), item(11)], "mid": [item(12)], "late": []}}
     b = g.from_recommendation(rec, 157672295)
-    assert b.name == "Advisor: Rem vs Haze e Abrams"
+    assert b.name == "Advisor: Rem vs Haze and Abrams"
     names = [c.name for c in b.categories]
-    assert names == ["Lane: contra Haze e Abrams", g.MID_GAME, g.SITUATIONAL]  # empty late is skipped
+    assert names == ["Lane: vs Haze and Abrams", g.MID_GAME, "Situational"]  # empty late is skipped
     counters = b.categories[-1]
     assert counters.optional and counters.items == [20]  # 10 is already in the lane build
-    assert counters.annotations[20].startswith("Contra Haze")
+    assert counters.annotations[20].startswith("Against Haze")
     assert b.share_code()

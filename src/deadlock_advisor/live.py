@@ -13,6 +13,7 @@ from dataclasses import dataclass, asdict
 from typing import Callable
 
 from .api import ApiError, DeadlockApi
+from .i18n import t
 
 STEAM64_BASE = 76561197960265728
 
@@ -73,7 +74,7 @@ def _build_roster(match_id: int, players: list[Player], account_id: int,
                   game_mode: str | None = None) -> Roster:
     me = next((p for p in players if p.account_id == account_id), None)
     if me is None:
-        raise ApiError("Sua conta não foi encontrada nesta partida (confira account_id no config).")
+        raise ApiError(t("live.account_missing"))
     if game_mode is None:
         # Street Brawl is 4v4 and reports every lane as 0; normal is 6v6 with lanes 1/4/6.
         game_mode = "street_brawl" if len(players) <= 8 else "normal"
@@ -112,7 +113,7 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
         if event == "ping":
             pass
         elif event == "status":
-            on_status(status_pt(data.get("message", "") if isinstance(data, dict) else str(data)))
+            on_status(status_text(data.get("message", "") if isinstance(data, dict) else str(data)))
         elif event == "error":
             msg = data.get("error") if isinstance(data, dict) else str(data)
             raise ApiError(msg or "erro no live query")
@@ -136,18 +137,18 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
         if time.time() - started > timeout_s:
             break
     if not latest:
-        raise ApiError("Broadcast sem jogadores ainda.")
+        raise ApiError(t("live.no_players"))
     return _build_roster(match_id, list(latest.values()), account_id)
 
 
-def status_pt(msg: str) -> str:
-    """deadlock-api reports its own retries in English; the page is in Portuguese."""
+def status_text(msg: str) -> str:
+    """deadlock-api reports its own retries in English; show them in the app language."""
     low = msg.lower()
     if "not ready" in low:
-        return "Aguardando a transmissão da Valve ficar pronta (costuma levar 1 a 2 min)…"
+        return t("live.not_ready")
     if "spectat" in low:
-        return "Conectando à transmissão ao vivo da partida…"
-    return msg
+        return t("live.connecting")
+    return t("live.connecting")
 
 
 def _row_to_player(data) -> Player | None:
@@ -229,7 +230,7 @@ def fetch_roster(api: DeadlockApi, match_id: int, account_id: int,
         attempt += 1
         active = roster_from_active(api, match_id, account_id)
         if active and len(active.players) >= 8:
-            on_status("Jogadores encontrados na lista de partidas ativas.")
+            on_status(t("live.connecting"))
             # active list has no lanes; still try broadcast for lanes, but keep this as fallback
             try:
                 return roster_from_broadcast(api, match_id, account_id, on_status)
@@ -239,9 +240,9 @@ def fetch_roster(api: DeadlockApi, match_id: int, account_id: int,
             return roster_from_broadcast(api, match_id, account_id, on_status)
         except ApiError as e:
             last_err = e
-            on_status(f"Tentativa {attempt}: {e} — tentando de novo em breve…")
+            on_status(t("live.connecting"))
             time.sleep(min(60, 15 * attempt))
-    raise ApiError(f"Não foi possível ler os jogadores da partida: {last_err}")
+    raise ApiError(f"{t('live.cant_read')} ({last_err})")
 
 
 # --------------------------------------------------------------------------- enemy items

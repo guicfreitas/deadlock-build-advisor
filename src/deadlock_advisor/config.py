@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import steam
+from .i18n import LANGUAGES, t
 
 def data_dir() -> Path:
     """Per-user, writable folder (an installed app can't write next to its .exe)."""
@@ -34,7 +35,7 @@ def _opt_int(lo: int, hi: int):
             return None
         v = int(v)
         if not lo <= v <= hi:
-            raise ValueError(f"deve estar entre {lo} e {hi}")
+            raise ValueError(t("err.range", lo=lo, hi=hi))
         return v
     return check
 
@@ -43,7 +44,7 @@ def _num(lo: float, hi: float, kind=int):
     def check(v):
         v = kind(v)
         if not lo <= v <= hi:
-            raise ValueError(f"deve estar entre {lo} e {hi}")
+            raise ValueError(t("err.range", lo=lo, hi=hi))
         return v
     return check
 
@@ -51,7 +52,14 @@ def _num(lo: float, hi: float, kind=int):
 def _game_dir(v):
     v = (v or "").strip().strip('"')
     if v and not (Path(v) / "game" / "citadel").is_dir():
-        raise ValueError(r"não parece a pasta do Deadlock (falta game\citadel)")
+        raise ValueError(t("err.not_game_dir"))
+    return v
+
+
+def _language(v):
+    v = (v or "").strip()
+    if v and v not in LANGUAGES:
+        raise ValueError(t("err.invalid"))
     return v
 
 
@@ -68,6 +76,7 @@ EDITABLE = {
     "overlay": (bool, False),
     "overlay_alpha": (_num(0.3, 1.0, float), False),
     "auto_update": (bool, True),
+    "language": (_language, False),
     "engine.lane_window_s": (_num(300, 900), True),
     "engine.lane_budget": (_num(1000, 12000), True),
     "engine.filters.min_average_badge": (_opt_int(0, RANKS_MAX_BADGE), True),
@@ -83,6 +92,7 @@ class Config:
     overlay: bool = True
     overlay_alpha: float = 0.88
     auto_update: bool = True           # install new releases by itself (out of a match)
+    language: str = ""                 # UI language code ("" = follow the system language)
     update_repo: str = "guicfreitas/deadlock-build-advisor"  # GitHub repo whose releases we follow
     cache_dir: str = str(Path(os.environ.get("LOCALAPPDATA", Path.home())) / "deadlock-advisor" / "cache")
     engine: dict = field(default_factory=dict)  # overrides for EngineConfig (see engine.py)
@@ -167,7 +177,7 @@ def settings_view(cfg: Config) -> dict:
     """Current values for the settings screen: what the user set, and what is in effect."""
     effective = {"game_dir": cfg.game_dir, "account_id": cfg.account_id, "api_key": cfg.api_key,
                  "port": cfg.port, "overlay": cfg.overlay, "overlay_alpha": cfg.overlay_alpha,
-                 "auto_update": cfg.auto_update, "engine": cfg.engine}
+                 "auto_update": cfg.auto_update, "language": cfg.language, "engine": cfg.engine}
     return {"path": str(cfg.path),
             "user": {k: _get_path(cfg.user, k) for k in EDITABLE},
             "effective": {k: _get_path(effective, k) for k in EDITABLE}}
@@ -182,13 +192,13 @@ def update_settings(cfg: Config, changes: dict) -> dict:
     errors, clean = {}, {}
     for key, value in changes.items():
         if key not in EDITABLE:
-            errors[key] = "campo desconhecido"
+            errors[key] = t("err.unknown_field")
             continue
         check, _ = EDITABLE[key]
         try:
             clean[key] = check(value) if value is not None else None
         except (TypeError, ValueError) as e:
-            errors[key] = str(e) or "valor inválido"
+            errors[key] = str(e) or t("err.invalid")
     if errors:
         return {"saved": [], "restart": [], "errors": errors}
 
@@ -222,4 +232,4 @@ def update_settings(cfg: Config, changes: dict) -> dict:
 
 
 DEFAULTS = {"game_dir": "", "account_id": None, "api_key": None, "port": 8787, "overlay": True,
-            "overlay_alpha": 0.88, "auto_update": True, "engine": {"lane_window_s": 600, "lane_budget": 5600}}
+            "overlay_alpha": 0.88, "auto_update": True, "language": "", "engine": {"lane_window_s": 600, "lane_budget": 5600}}

@@ -1,192 +1,96 @@
 <div align="center">
 
+**English · [Português (Brasil)](README.pt-BR.md)**
+
 # Deadlock Build Advisor
 
-**Builds de counter para Deadlock, montadas na hora a partir dos heróis da sua partida.**
+**Counter builds for Deadlock, put together on the fly from the heroes in your match.**
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
-![Plataforma](https://img.shields.io/badge/plataforma-Windows-0078D6?logo=windows&logoColor=white)
-![Dependências](https://img.shields.io/badge/depend%C3%AAncias-nenhuma-brightgreen)
-![VAC](https://img.shields.io/badge/VAC-seguro-success)
+![Platform](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)
+![VAC](https://img.shields.io/badge/VAC-safe-success)
 
 </div>
 
-Quando a partida começa, o app descobre quem são os seus adversários e monta três recomendações:
+When a match starts, the app finds out who you're up against and builds three recommendations:
 
-| | O que é | Contra quem |
+| | What it is | Against whom |
 |---|---|---|
-| 🛡️ **Build de lane** | itens dos primeiros ~10 minutos, dentro de um orçamento realista de almas | a dupla da **sua lane** |
-| ⚔️ **Build geral** | itens de mid e late game | o **time inimigo inteiro** |
-| 🎯 **Counters por adversário** | os itens com maior vantagem contra cada inimigo (ex.: *Metal Skin* contra Haze) e a sua win rate no confronto | cada inimigo |
+| 🛡️ **Lane build** | items for the first ~10 minutes, within a realistic souls budget | the duo in **your lane** |
+| ⚔️ **Full build** | mid and late game items | the **whole enemy team** |
+| 🎯 **Counters per opponent** | the items with the biggest edge against each enemy, and your win rate in that matchup | each enemy |
 
-E durante a partida:
+And during the match:
 
-- 📋 **Copiar para o jogo**: um clique copia a build no formato de guia do Deadlock. No jogo, é só abrir *Explorar guias*, criar um guia e clicar em **Colar guia**: as categorias, os itens e as anotações entram prontos, e a Compra rápida passa a seguir a build.
-- 🔄 **Troque para counterar**: a cada minuto o app lê o que os inimigos compraram e, se aparecer uma ameaça (muita cura, dano de arma, dano espiritual, controle, resistências), sugere no topo da tela "compre X em vez de Y" na build que você colou, dizendo quem comprou o quê.
+- 📋 **Copy to the game**: one click copies the build in Deadlock's own build-sharing format. In the game, open *Browse builds*, create a build and click **Paste build**: categories, items and notes come in ready, and Quick Buy follows the build.
+- 🔄 **Swap to counter**: every minute the app reads what the enemies bought and, when a threat shows up (lots of healing, weapon damage, spirit damage, crowd control, resistances), suggests "buy X instead of Y" for the build you pasted, and tells you who bought what.
 
-As recomendações aparecem num **overlay sempre visível** por cima do jogo e numa **página web local** (`http://localhost:8787`), que você pode abrir no navegador do overlay da Steam (Shift+Tab), num segundo monitor ou no celular.
+Recommendations show up in an **always-on-top overlay** and on a **local web page** (`http://localhost:8787`) that you can open on a second monitor or your phone.
 
 > [!NOTE]
-> Funciona nos modos **casual** e **competitivo** (mapa padrão 6v6). A **Street Brawl** (4v4) não é suportada, porque lá os itens vêm por draft e não são comprados. O app detecta esse modo e apenas avisa.
+> Works in **casual** and **ranked** (standard 6v6 map). **Street Brawl** (4v4) is not supported: items are drafted there, not bought. The app detects it and just tells you.
 
-## É seguro? (VAC)
+## Languages
 
-**Sim.** O app **não injeta nada no jogo, não lê a memória do processo e não modifica arquivos do jogo**. Ele só:
+English, Português (Brasil), Español, Русский and 简体中文. The app follows your Windows language (change it in Settings; applies after a restart). Hero and item names follow the same language. To add one, copy `src/deadlock_advisor/locales/en.json`, translate the values, and register the code in `LANGUAGES` in `i18n.py`.
 
-- lê o `console.log`, um arquivo de texto que o próprio jogo grava quando é iniciado com `-condebug`;
-- consulta a API pública da comunidade [deadlock-api.com](https://deadlock-api.com);
-- desenha uma janela própria do Windows por cima do jogo.
+## Is it safe? (VAC)
 
-Por que não ler os heróis direto do jogo? Porque o Deadlock não expõe essa informação de forma segura: não existe Game State Integration, o combat log fica desligado no matchmaking e o comando `status` só mostra nomes. O broadcast ao vivo da Valve, acessado pela deadlock-api, é a única fonte que não encosta no jogo.
+**Yes.** The app **injects nothing into the game, never reads the process memory and never modifies game files**. It only:
 
-## Início rápido
+- reads `console.log`, a text file the game writes itself when launched with `-condebug`;
+- queries the community API [deadlock-api.com](https://deadlock-api.com);
+- draws its own window on top of the game.
 
-1. **Baixe e rode o instalador** `DeadlockBuildAdvisor-Setup-x.y.z.exe` (na página de *Releases*). Não precisa de Python nem de nada além dele, e não pede senha de administrador.
-2. **Ative o log do jogo.** Na Steam: Deadlock → Propriedades → Opções de inicialização → adicione `-condebug`.
-3. **Use janela sem bordas.** No jogo, coloque o modo de tela em *Janela sem bordas* (Borderless). Em tela cheia, o overlay não aparece por cima.
-4. **Abra o app** pelo atalho *Deadlock Build Advisor*. Ele acha sozinho a pasta do jogo e a sua conta pelas bibliotecas da Steam. Na primeira vez, a página mostra um passo a passo (achar o Deadlock → ativar o `-condebug` → abrir o jogo) que se marca sozinho conforme você avança.
-5. **Entre numa partida.** O status muda para "Partida encontrada" e a build aparece logo em seguida.
+Why not read the heroes straight from the game? Because Deadlock doesn't expose that safely: there's no Game State Integration, the combat log is off in matchmaking and the `status` command only shows names. Valve's live broadcast, reached through deadlock-api, is the one source that never touches the game.
 
-O app abre uma janelinha de controle (abrir a página, mostrar ou esconder o overlay, configurações, sair). Fechar essa janela fecha o app. Se você abrir o atalho de novo com o app já aberto, ele só mostra a página.
+## Quick start
+
+1. **Download and run the installer** `DeadlockBuildAdvisor-Setup-x.y.z.exe` from the *Releases* page. No Python needed, and no admin password.
+2. **Turn on the game log.** In Steam: Deadlock → Properties → Launch Options → add `-condebug`.
+3. **Use borderless windowed.** In the game's video settings pick *Borderless*; the overlay can't draw over exclusive fullscreen.
+4. **Open the app** from the *Deadlock Build Advisor* shortcut. It finds the game folder and your account through your Steam libraries. The first time, the page walks you through three steps that tick themselves off.
+5. **Join a match.** The status changes to "Match found" and the build shows up shortly after (about 1–2 minutes: that's Valve's broadcast delay).
 
 > [!TIP]
-> Se a detecção falhar (ex.: Steam instalada num lugar incomum), defina a pasta do jogo em **Configurações**, na página do app. Para achar a pasta, na Steam: Deadlock → Propriedades → Arquivos instalados → **Procurar**.
+> If detection fails (say, Steam in an unusual place), set the game folder in **Settings**. In Steam: Deadlock → Properties → Installed Files → **Browse**.
 
-<details>
-<summary>Rodar a partir do código-fonte</summary>
+## Settings
 
-Requer [Python 3.10+](https://www.python.org/downloads/), sem dependências externas. `git clone` este repositório e rode `run.bat`, ou:
+Everything is optional and lives in **Settings** on the app's page: game folder, Steam account, language, the rank of the matches used for the stats, lane length and souls, overlay on/off and transparency, automatic updates, and an optional data-service key (without one, about 6 matches per hour can be followed).
 
-```powershell
-$env:PYTHONPATH="src"; python -m deadlock_advisor
-```
+## Common problems
 
-</details>
-
-## Uso
-
-- **Automático**: deixe o app aberto. Numa partida casual de teste, a build ficou pronta cerca de 85 s depois de a partida ser encontrada, praticamente quando o relógio do jogo chegou a 0:00. O atraso é do broadcast da Valve, não do app.
-- **Troca de lane**: nos primeiros 5 minutos, o app continua acompanhando a partida. Se a dupla inimiga da sua lane mudar, ele refaz a build de lane e avisa no status.
-- **Overlay**: arraste com o botão esquerdo, dê duplo-clique para recolher e clique com o botão direito para fechar.
-- **Modo manual** (na página web): escolha o seu herói e marque os inimigos. Um clique marca como inimigo; um segundo clique marca como inimigo de lane.
-- **Linha de comando**:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m deadlock_advisor --hero Infernus --enemies "Abrams,Haze,Seven,Lady Geist,Ivy,Mina" --lane "Abrams,Haze"
-python -m deadlock_advisor --match-id 135235741   # força uma partida específica
-```
-
-## Configuração
-
-Todas as opções são opcionais e ficam na seção **Configurações** da página do app, com explicação de cada campo. Elas são salvas em `%APPDATA%\deadlock-advisor\config.json` (rodando a partir do código-fonte, um `config.json` na pasta do projeto tem prioridade). Só o que você mudar é gravado: o resto continua automático.
-
-| Campo | Padrão | Para quê |
-|---|---|---|
-| `game_dir` | detectado pela Steam | pasta de instalação do jogo |
-| `account_id` | detectado pela Steam | seu SteamID3, caso a detecção automática falhe |
-| `api_key` | — | chave opcional da deadlock-api. Sem ela, o limite é de ~6 partidas espectadas por hora. Também pode vir da variável `DEADLOCK_API_KEY`. |
-| `port` | `8787` | porta da página web local |
-| `overlay` | `true` | liga ou desliga o overlay |
-| `overlay_alpha` | `0.88` | transparência do overlay |
-| `auto_update` | `true` | baixa e instala versões novas sozinho, fora de partida |
-| `update_repo` | `guicfreitas/deadlock-build-advisor` | repositório do GitHub cujas *releases* o app segue |
-| `engine.lane_window_s` | `600` | duração da fase de lane, em segundos |
-| `engine.lane_budget` | `5600` | almas gastas na lane |
-| `engine.filters` | `{}` | filtros da API, ex.: `{"min_average_badge": 80}` para considerar só partidas de rank alto |
-
-A pasta do jogo e a porta só mudam depois de reiniciar o app; a página oferece um botão para isso. O resto vale na hora. O log fica em `%LOCALAPPDATA%\deadlock-advisor\advisor.log`.
-
-## Como funciona
-
-```
-console.log  ──(match_id=...)──►  watcher  ──►  deadlock-api live broadcast (SQL)
-                                                  │  heróis, times e lanes dos 12 jogadores
-                                                  ▼
-                       deadlock-api analytics  ──►  motor de recomendação  ──►  overlay + web UI
-                       (item-stats, hero-counter-stats)
-```
-
-1. Ao entrar numa partida, o jogo grava `... match_id=135235741` no `console.log`.
-2. O app pede para a deadlock-api espectar a partida e lê do broadcast ao vivo o herói, o time e a lane de cada jogador. A sua conta é detectada pelo arquivo `citadel/account_<id>.stats`.
-3. O motor compara, para o seu herói, a win rate de cada item **contra esses adversários** com a win rate **geral** do item. A diferença é o *lift*:
-   - as win rates são suavizadas (prior bayesiano) para que itens com poucas partidas não dominem a lista;
-   - o efeito do matchup em si (por exemplo, "Infernus perde 3% a mais contra Haze") é descontado, para que o lift meça o item e não o confronto;
-   - a build de lane usa só compras feitas até `lane_window_s`, filtradas para jogadores que estavam na mesma lane do inimigo.
-4. A **ordem das habilidades** vem da árvore de ordens de upgrade dos jogadores do herói (`/v1/analytics/ability-order-tree`, últimos 14 dias). O app percorre a árvore ponto a ponto: segue a escolha mais comum e só troca por outra quando ela é usada por pelo menos 25% dos jogadores daquele passo e ganha mais. A win rate só é comparada entre escolhas do mesmo passo, porque ordens mais longas ganham mais só por pertencerem a partidas vencidas (quem ganha sobe de nível mais rápido). A ordem vai junto no guia colado no jogo.
-
-### Atualizações
-
-O app instalado confere as *releases* do GitHub ao abrir e a cada 6 horas. Quando sai uma versão nova, ele baixa o instalador, confere o SHA-256 e instala sozinho assim que você não estiver em partida; o app fecha e reabre em poucos segundos. Também dá para instalar na hora pelo botão **Atualizar agora**, ou desligar isso em Configurações.
-
-## Problemas comuns
-
-| Sintoma | Causa provável |
+| Symptom | Likely cause |
 |---|---|
-| "Falta -condebug nas opções de inicialização" ou "console.log não encontrado em …" | Falta o `-condebug` nas opções de inicialização, ou o `game_dir` está errado. Confira se existe `game\citadel\console.log` dentro da pasta do jogo. |
-| O status nunca sai de "Aguardando partida…" | O jogo foi aberto sem `-condebug`. Feche o Deadlock, adicione a opção e abra de novo. |
-| "account_id não detectado" ou "Sua conta não foi encontrada nesta partida" | Defina o seu SteamID3 em `account_id` no `config.json`. |
-| Erro ao ler os jogadores depois de várias partidas seguidas | Sem chave, a deadlock-api deixa espectar ~6 partidas por hora. Espere ou configure uma `api_key`. Enquanto isso, use o modo manual. |
-| O overlay não aparece por cima do jogo | O jogo está em tela cheia. Mude para *Janela sem bordas*. |
-| A build demora a aparecer | Normal: o broadcast da Valve tem atraso de cerca de 1 minuto e meio. |
-| `python` não é reconhecido | O Python não está no PATH. Reinstale marcando "Add Python to PATH". |
+| "The game log is not turned on" / "doesn't exist yet" | `-condebug` is missing from the launch options, or the game folder is wrong. |
+| Stuck on "Waiting for a match…" | The game was opened without `-condebug`. Close Deadlock, add it and open it again. |
+| "Couldn't find your Steam account" | Enter your Steam account number in Settings. |
+| Error reading players after many matches in a row | Without a key, about 6 matches per hour can be followed. Wait a bit, or use manual mode on the page. |
+| Overlay doesn't show over the game | The game is in exclusive fullscreen. Switch to *Borderless*. |
 
-## Desenvolvimento
+## Feedback and support
+
+Found a bug or have an idea? Use **Feedback & help** at the bottom of the app's page: it opens a GitHub issue with your app version already filled in (no personal data). You can also [open an issue](../../issues/new) directly.
+
+The app is free, has no ads and nothing is locked. If it helps you, you can chip in through the support links in the app.
+
+## Development
+
+See [README.pt-BR.md](README.pt-BR.md) for how it works internally (in Portuguese) and `CLAUDE.md` for the project notes.
 
 ```powershell
 pip install pytest
 python -m pytest -q -p no:anyio
+$env:PYTHONPATH="src"; python -m deadlock_advisor
 ```
 
-Gerar o `.exe` e o instalador (só para quem distribui; o app em si não tem dependências):
+## License
 
-```powershell
-python -m venv .venv-build; .venv-build\Scripts\pip install pyinstaller
-winget install JRSoftware.InnoSetup
-powershell -ExecutionPolicy Bypass -File packaging\build.ps1   # -> dist\DeadlockBuildAdvisor-Setup-x.y.z.exe (+ .sha256)
-```
+All rights reserved. The code is here for reference only: you may read it and use the app through the official installers, for personal, non-commercial use. Copying, modifying, redistributing or selling it, in whole or in part, is not allowed without written permission. See [LICENSE](LICENSE).
 
-Publicar uma versão (é o que os apps instalados baixam):
+## Credits
 
-1. Suba `__version__` em `src/deadlock_advisor/__init__.py` (e em `pyproject.toml`) e rode o `build.ps1`.
-2. No GitHub, crie uma *release* com a tag `vX.Y.Z` e anexe `DeadlockBuildAdvisor-Setup-X.Y.Z.exe` e o `.sha256`.
-   O repositório precisa ser público: o app consulta a API do GitHub sem login.
+Match data and stats come from [deadlock-api.com](https://deadlock-api.com), a community project. Please consider supporting them.
 
-```
-src/deadlock_advisor/
-  logwatch.py   lê o console.log e detecta início e fim de partida
-  live.py       descobre o roster (heróis, times, lanes) pelo broadcast ao vivo
-  api.py        cliente da deadlock-api com cache em disco
-  engine.py     motor de recomendação (lift, suavização, builds de lane e geral, counters)
-  app.py        orquestração e estado compartilhado
-  server.py     servidor web local e API JSON
-  overlay.py    overlay tkinter sempre no topo
-  panel.py      janela de controle do app instalado
-  steam.py      acha o jogo, a conta e as opções de inicialização pela Steam
-  gamebuild.py  exporta a build como guia para o "Colar guia" do jogo
-  abilities.py  escolhe a ordem das habilidades pela árvore de ordens dos jogadores
-  updater.py    confere, baixa e instala versões novas (GitHub Releases)
-  counters.py   sugere trocas a partir dos itens que os inimigos compraram
-  web/          interface web
-packaging/      ícone, PyInstaller e instalador (Inno Setup)
-tests/
-```
-
-Encontrou um bug ou tem uma ideia? Abra uma *issue*. O código é publicado só para consulta (veja a [Licença](#licença)), então *pull requests* e forks modificados não são aceitos.
-
-## Roadmap
-
-- [ ] Ajustar automaticamente o filtro de rank ao seu rank (`/v1/players/{id}/rank`).
-- [x] Recomendar a ordem de habilidades e incluí-la no guia colado.
-- [x] Atualização automática.
-- [ ] Atalho global para mostrar ou esconder o overlay.
-
-## Licença
-
-Todos os direitos reservados. O código está aqui só para consulta: você pode ver o código e usar o app pelos instaladores oficiais, para uso pessoal e não comercial. Copiar, modificar, redistribuir ou vender, no todo ou em parte, não é permitido sem autorização por escrito. Veja o arquivo [LICENSE](LICENSE).
-
-## Créditos
-
-Os dados de partidas e estatísticas vêm da [deadlock-api.com](https://deadlock-api.com), um projeto da comunidade. Considere apoiá-los.
-
-Este projeto não é afiliado à Valve Corporation. Deadlock e os nomes dos heróis e itens são marcas da Valve.
+This project is not affiliated with Valve Corporation. Deadlock and the hero and item names are Valve trademarks.

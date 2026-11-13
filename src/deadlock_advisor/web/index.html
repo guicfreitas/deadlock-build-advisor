@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,48 +9,48 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&display=swap">
   <link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="i18n-pending">
+  <!-- All text comes from locales/<lang>.json through data-i18n* attributes (see app.js). -->
   <header>
     <h1>Deadlock Build Advisor <span id="app-version" class="app-version"></span></h1>
-    <div id="status" class="status idle"><span class="dot"></span><span id="status-msg">Conectando…</span></div>
+    <div id="status" class="status idle"><span class="dot"></span><span id="status-msg"></span></div>
   </header>
 
   <main>
     <section id="update" class="card update hidden">
       <span id="update-msg"></span>
-      <button id="update-go" class="hidden">Atualizar agora</button>
+      <button id="update-go" class="hidden" data-i18n="update.now"></button>
     </section>
     <!-- first run: one step at a time, each one checks itself -->
     <section id="onboard" class="card onboard hidden">
-      <span class="eyebrow">Primeira vez</span>
-      <h2>Vamos deixar tudo pronto <small>3 passos, uma vez só</small></h2>
+      <span class="eyebrow" data-i18n="onb.eyebrow"></span>
+      <h2><span data-i18n="onb.title"></span> <small data-i18n="onb.sub"></small></h2>
       <ol class="steps">
         <li data-step="find">
-          <div class="step-head"><span class="num">1</span><b>Encontrar o Deadlock</b><span class="state"></span></div>
+          <div class="step-head"><span class="num">1</span><b data-i18n="onb.s1.title"></b><span class="state"></span></div>
           <div class="step-body">
-            <p id="find-msg">Procurando a Steam e o Deadlock…</p>
-            <button class="ghost" data-open-settings>Escolher a pasta manualmente</button>
+            <p id="find-msg" data-i18n="onb.s1.searching"></p>
+            <button class="ghost" data-open-settings data-i18n="onb.s1.manual"></button>
           </div>
         </li>
         <li data-step="condebug">
-          <div class="step-head"><span class="num">2</span><b>Ativar o log do jogo</b><span class="state"></span></div>
+          <div class="step-head"><span class="num">2</span><b data-i18n="onb.s2.title"></b><span class="state"></span></div>
           <div class="step-body">
-            <p>É assim que o app sabe quando uma partida começa. Nada é injetado no jogo.</p>
+            <p data-i18n="onb.s2.intro"></p>
             <ol class="howto">
-              <li>Na <b>Steam</b>, clique com o botão direito em <b>Deadlock</b> → <b>Propriedades…</b></li>
-              <li>Em <b>Geral</b> → <b>Opções de inicialização</b>, cole:
-                <span class="code-copy"><code class="big">-condebug</code><button id="copy-condebug" class="ghost">Copiar</button></span></li>
-              <li>Feche a janela de propriedades.</li>
+              <li data-i18n-html="onb.s2.step1"></li>
+              <li><span data-i18n-html="onb.s2.step2"></span>
+                <span class="code-copy"><code class="big">-condebug</code><button id="copy-condebug" class="ghost" data-i18n="onb.s2.copy"></button></span></li>
+              <li data-i18n="onb.s2.step3"></li>
             </ol>
-            <button id="condebug-done">Já adicionei</button>
+            <button id="condebug-done" data-i18n="onb.s2.done"></button>
           </div>
         </li>
         <li data-step="launch">
-          <div class="step-head"><span class="num">3</span><b>Abrir o Deadlock</b><span class="state"></span></div>
+          <div class="step-head"><span class="num">3</span><b data-i18n="onb.s3.title"></b><span class="state"></span></div>
           <div class="step-body">
-            <p>Abra o Deadlock pela Steam (se já estava aberto, feche e abra de novo).
-               Este passo se completa sozinho quando o jogo abrir.</p>
-            <p class="hint"><span class="spinner"></span> Esperando o jogo…</p>
+            <p data-i18n="onb.s3.body"></p>
+            <p class="hint"><span class="spinner"></span> <span data-i18n="onb.s3.waiting"></span></p>
           </div>
         </li>
       </ol>
@@ -58,131 +58,153 @@
 
     <!-- set up, no match yet: what happens next -->
     <section id="guide" class="card guide hidden">
-      <span class="eyebrow">Pronto para jogar</span>
-      <h2>Como usar</h2>
+      <span class="eyebrow" data-i18n="guide.eyebrow"></span>
+      <h2 data-i18n="guide.title"></h2>
       <ol class="flow">
-        <li data-flow="queue"><span class="num">1</span><div><b>Entre numa partida</b>
-          <small>Casual ou ranqueada, no mapa normal. Deixe esta janela aberta.</small></div></li>
-        <li data-flow="loading"><span class="num">2</span><div><b>Espere 1 a 2 minutos</b>
-          <small>O app lê os heróis da partida e monta a build contra a sua lane.</small></div></li>
-        <li data-flow="ready"><span class="num">3</span><div><b>Copie e cole no jogo</b>
-          <small>Loja → Explorar guias → Criar guia → <b>Colar guia</b>.</small></div></li>
+        <li data-flow="queue"><span class="num">1</span><div><b data-i18n="guide.1.title"></b>
+          <small data-i18n="guide.1.sub"></small></div></li>
+        <li data-flow="loading"><span class="num">2</span><div><b data-i18n="guide.2.title"></b>
+          <small data-i18n="guide.2.sub"></small></div></li>
+        <li data-flow="ready"><span class="num">3</span><div><b data-i18n="guide.3.title"></b>
+          <small data-i18n-html="guide.3.sub"></small></div></li>
       </ol>
     </section>
 
-
-
     <!-- in a match: the one thing to do first -->
     <section id="now" class="card now hidden">
-      <span class="eyebrow">Faça agora</span>
+      <span class="eyebrow" data-i18n="now.eyebrow"></span>
       <div class="row">
         <div id="me" class="hero-big"></div>
-        <div class="vs">VS</div>
+        <div class="vs" data-i18n="now.vs"></div>
         <div id="lane-enemies" class="hero-list"></div>
       </div>
       <div class="now-actions">
-        <button id="copy-build" class="big">Copiar build para o jogo</button>
+        <button id="copy-build" class="big" data-i18n="now.copy"></button>
         <ol class="paste-steps">
-          <li>No jogo, abra a <b>Loja</b></li>
-          <li><b>Explorar guias</b> → <b>Criar guia</b></li>
-          <li><b>Colar guia</b> e salve</li>
+          <li data-i18n-html="now.step1"></li>
+          <li data-i18n-html="now.step2"></li>
+          <li data-i18n-html="now.step3"></li>
         </ol>
       </div>
       <p id="copy-msg" class="hint"></p>
     </section>
 
     <section id="swaps" class="card swaps hidden">
-      <h2>Troque para counterar <small id="swaps-meta"></small></h2>
+      <h2><span data-i18n="swaps.title"></span> <small id="swaps-meta"></small></h2>
       <div id="swap-list" class="swap-list"></div>
     </section>
 
     <section id="lane" class="card hidden">
-      <h2>Build de lane <small id="lane-meta"></small>
-        <label class="stats-toggle"><input type="checkbox" id="show-stats"> Mostrar números</label></h2>
-      <p class="hint read-order">Compre da esquerda para a direita. Itens tracejados viram o próximo item.</p>
+      <h2><span data-i18n="lane.title"></span> <small id="lane-meta"></small>
+        <label class="stats-toggle"><input type="checkbox" id="show-stats"> <span data-i18n="lane.numbers"></span></label></h2>
+      <p class="hint read-order" data-i18n="lane.read"></p>
       <div id="lane-items" class="items"></div>
     </section>
 
     <section id="full" class="card hidden">
       <details open>
-        <summary><h2>Depois da lane <small>contra o time inimigo inteiro</small></h2></summary>
-        <h3>Mid game</h3><div id="mid-items" class="items"></div>
-        <h3>Late game</h3><div id="late-items" class="items"></div>
+        <summary><h2><span data-i18n="full.title"></span> <small data-i18n="full.sub"></small></h2></summary>
+        <h3 data-i18n="full.mid"></h3><div id="mid-items" class="items"></div>
+        <h3 data-i18n="full.late"></h3><div id="late-items" class="items"></div>
       </details>
     </section>
 
     <section id="abilities" class="card hidden">
       <details>
-        <summary><h2>Ordem das habilidades <small id="abilities-meta"></small></h2></summary>
+        <summary><h2><span data-i18n="ab.title"></span> <small id="abilities-meta"></small></h2></summary>
         <div id="ability-grid" class="ability-grid"></div>
       </details>
     </section>
 
     <section id="enemies" class="card hidden">
       <details>
-        <summary><h2>Adversários <small>win rate contra cada um · itens que mais ajudam</small></h2></summary>
+        <summary><h2><span data-i18n="enemies.title"></span> <small data-i18n="enemies.sub"></small></h2></summary>
         <div id="enemy-list" class="enemy-grid"></div>
       </details>
     </section>
 
     <section class="card">
       <details id="settings">
-        <summary>Configurações</summary>
+        <summary data-i18n="set.summary"></summary>
         <form id="settings-form" class="settings" autocomplete="off">
-          <label>Pasta do Deadlock
-            <input name="game_dir" placeholder="detectada pela Steam">
-            <small>Deixe vazio para detectar automaticamente. Na Steam: Deadlock → Propriedades → Arquivos instalados → Procurar.</small></label>
-          <label>Sua conta (SteamID3)
-            <input name="account_id" inputmode="numeric" placeholder="detectada pela Steam">
-            <small>Deixe vazio para usar a conta logada na Steam.</small></label>
-          <label>Rank das partidas usadas nas estatísticas
-            <select name="engine.filters.min_average_badge">
-              <option value="">Todos os ranks</option>
-              <option value="31">Alchemist ou acima</option>
-              <option value="51">Ritualist ou acima</option>
-              <option value="71">Archon ou acima</option>
-              <option value="91">Phantom ou acima</option>
-              <option value="101">Ascendant ou acima</option>
+          <label><span data-i18n="set.game_dir"></span>
+            <input name="game_dir" data-i18n-ph="set.game_dir.ph">
+            <small data-i18n="set.game_dir.help"></small></label>
+          <label><span data-i18n="set.account"></span>
+            <input name="account_id" inputmode="numeric" data-i18n-ph="set.account.ph">
+            <small data-i18n="set.account.help"></small></label>
+          <label><span data-i18n="set.language"></span>
+            <select name="language" id="language"></select>
+            <small data-i18n="set.language.help"></small></label>
+          <label><span data-i18n="set.rank"></span>
+            <select name="engine.filters.min_average_badge" id="rank">
+              <option value="" data-i18n="set.rank.all"></option>
+              <option value="31" data-rank="Alchemist"></option>
+              <option value="51" data-rank="Ritualist"></option>
+              <option value="71" data-rank="Archon"></option>
+              <option value="91" data-rank="Phantom"></option>
+              <option value="101" data-rank="Ascendant"></option>
             </select>
-            <small>Ranks altos = dados de jogadores melhores, mas com menos partidas.</small></label>
-          <label>Duração da fase de lane (segundos)
+            <small data-i18n="set.rank.help"></small></label>
+          <label><span data-i18n="set.lane_window"></span>
             <input name="engine.lane_window_s" type="number" min="300" max="900" step="30"></label>
-          <label>Almas gastas na lane
+          <label><span data-i18n="set.lane_budget"></span>
             <input name="engine.lane_budget" type="number" min="1000" max="12000" step="100"></label>
-          <label class="check"><input name="overlay" type="checkbox"> Mostrar overlay por cima do jogo</label>
-          <label class="check"><input name="auto_update" type="checkbox"> Atualizar sozinho (baixa e instala versões novas fora de partida)</label>
-          <label>Transparência do overlay
+          <label class="check"><input name="overlay" type="checkbox"> <span data-i18n="set.overlay"></span></label>
+          <label class="check"><input name="auto_update" type="checkbox"> <span data-i18n="set.auto_update"></span></label>
+          <label><span data-i18n="set.alpha"></span>
             <input name="overlay_alpha" type="range" min="0.3" max="1" step="0.02"></label>
-          <label>Porta da página local
+          <label><span data-i18n="set.port"></span>
             <input name="port" type="number" min="1024" max="65535"></label>
-          <label>Chave da deadlock-api (opcional)
-            <input name="api_key" placeholder="sem chave: ~6 partidas espectadas por hora">
-            <small>Só se você jogar muitas partidas seguidas.</small></label>
+          <label><span data-i18n="set.apikey"></span>
+            <input name="api_key" data-i18n-ph="set.apikey.ph">
+            <small data-i18n="set.apikey.help"></small></label>
           <div class="actions">
-            <button type="submit">Salvar</button>
-            <button type="button" id="settings-restart" class="ghost hidden">Reiniciar o app para aplicar</button>
+            <button type="submit" data-i18n="set.save"></button>
+            <button type="button" id="settings-restart" class="ghost hidden" data-i18n="set.restart"></button>
             <span id="settings-msg" class="hint"></span>
           </div>
-          <p class="hint">Arquivo: <code id="settings-path"></code></p>
         </form>
       </details>
     </section>
 
     <section class="card">
       <details id="manual">
-        <summary>Modo manual (sem partida / se a detecção falhar)</summary>
+        <summary data-i18n="man.summary"></summary>
         <div class="manual">
-          <label>Seu herói <select id="m-hero"></select></label>
-          <p class="hint">Clique para marcar inimigos. Clique de novo para marcar como <b>inimigo de lane</b>. Terceiro clique remove.</p>
+          <label><span data-i18n="man.hero"></span> <select id="m-hero"></select></label>
+          <p class="hint" data-i18n-html="man.hint"></p>
           <div id="m-grid" class="pick-grid"></div>
-          <button id="m-go">Calcular build</button>
-          <label class="inline">ou match_id <input id="m-match" inputmode="numeric" placeholder="135235741"><button id="m-match-go">Buscar</button></label>
+          <button id="m-go" data-i18n="man.go"></button>
+          <label class="inline"><span data-i18n="man.match"></span> <input id="m-match" inputmode="numeric" placeholder="135235741"><button id="m-match-go" data-i18n="man.match_go"></button></label>
         </div>
       </details>
     </section>
+
+    <section id="feedback" class="card feedback">
+      <h2 data-i18n="fb.title"></h2>
+      <p data-i18n="fb.body"></p>
+      <div class="link-row">
+        <a id="fb-bug" class="btn" target="_blank" rel="noopener" data-i18n="fb.bug"></a>
+        <a id="fb-idea" class="btn ghost" target="_blank" rel="noopener" data-i18n="fb.idea"></a>
+        <a id="fb-email" class="btn ghost hidden" data-i18n="fb.email"></a>
+        <a id="fb-discord" class="btn ghost hidden" target="_blank" rel="noopener" data-i18n="fb.discord"></a>
+        <button id="fb-diag" class="ghost" data-i18n="fb.diag"></button>
+      </div>
+      <p class="hint"><span data-i18n="fb.diag_hint"></span> <span id="fb-diag-msg"></span></p>
+    </section>
+
+    <section id="support" class="card support hidden">
+      <h2 data-i18n="sup.title"></h2>
+      <p data-i18n="sup.body"></p>
+      <div id="support-links" class="link-row"></div>
+    </section>
   </main>
 
-  <footer>Dados: deadlock-api.com (últimos 30 dias). Win rate suavizado; “lift” = ganho vs. a média do item para o seu herói.</footer>
+  <footer>
+    <p data-i18n="foot.data"></p>
+    <p data-i18n="foot.not_affiliated"></p>
+  </footer>
   <script src="/app.js"></script>
 </body>
 </html>

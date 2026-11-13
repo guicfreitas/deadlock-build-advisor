@@ -7,7 +7,15 @@
   `%LOCALAPPDATA%\deadlock-advisor\advisor.log`. Settings live in `%APPDATA%\deadlock-advisor`.
 - The web server binds with SO_EXCLUSIVEADDRUSE: http.server's SO_REUSEADDR lets two copies share
   the port on Windows. A second launch opens the page of the running one and exits.
-- UI text and README are in Brazilian Portuguese; code/comments in English.
+- UI text is localized (en, pt-BR, es, ru, zh-CN): every player-facing string lives in
+  `locales/<lang>.json` (English is the source and fallback) and is used by Python (`i18n.t`) and by
+  the page (`data-i18n*` attributes / `T()` in app.js, fed by `/api/i18n`). Never hard-code UI text;
+  add the key to all five files (`tests/test_i18n.py` checks keys and `{placeholders}`). No developer
+  words in texts (git, config.json, field names, raw exceptions). Hero/item names come from
+  deadlock-api in the app language (`language` param). The language setting needs a restart.
+  Code, comments, logs and CLI help are English. README.md is English, README.pt-BR.md Portuguese.
+- `about.py` holds the feedback/support links (`CONTACT_EMAIL`, `CONTACT_DISCORD`, `SUPPORT_LINKS`);
+  an empty value hides its button. Support is a quiet card, never a paywall or ads.
 - **Never** inject into the game process, read its memory, or modify game files: VAC risk. Only read
   `game/citadel/console.log` (needs `-condebug`) and call https://api.deadlock-api.com.
 - Game install: `D:\SteamLibrary\steamapps\common\Deadlock` (game data in `game\citadel`).

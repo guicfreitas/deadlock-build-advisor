@@ -10,6 +10,7 @@ import webbrowser
 from typing import Callable
 
 from .app import Advisor
+from .i18n import t
 
 BG, CARD, FG, DIM, ACC, GOOD, BAD = "#0e1016", "#171a23", "#e8e6e3", "#8b8f9a", "#e0b25a", "#6fcf7f", "#e06a6a"
 DOT = {"ready": GOOD, "loading": ACC, "error": BAD, "setup": BAD}
@@ -34,17 +35,17 @@ class Panel:
         row.pack(fill="x", pady=(6, 0))
         self.dot = tk.Label(row, text="●", fg=DIM, bg=BG, font=("Segoe UI", 11))
         self.dot.pack(side="left")
-        self.status = tk.Label(row, text="Iniciando…", fg=FG, bg=BG, font=("Segoe UI", 10),
+        self.status = tk.Label(row, text=t("pnl.starting"), fg=FG, bg=BG, font=("Segoe UI", 10),
                                wraplength=330, justify="left", anchor="w")
         self.status.pack(side="left", fill="x", padx=(6, 0))
 
         btns = tk.Frame(self.root, bg=BG, padx=16, pady=(4))
         btns.pack(fill="x")
-        self._button(btns, "Abrir página", lambda: webbrowser.open(self.url), primary=True)
-        self.ov_btn = self._button(btns, "Ocultar overlay", self.toggle_overlay)
-        self._button(btns, "Configurações", lambda: webbrowser.open(self.url + "/#settings"))
-        self._button(btns, "Sair", self.quit)
-        tk.Label(self.root, text=f"Página: {url}  ·  feche esta janela para sair", fg=DIM, bg=BG,
+        self._button(btns, t("pnl.open"), lambda: webbrowser.open(self.url), primary=True)
+        self.ov_btn = self._button(btns, t("pnl.hide_overlay"), self.toggle_overlay)
+        self._button(btns, t("pnl.settings"), lambda: webbrowser.open(self.url + "/#settings"))
+        self._button(btns, t("pnl.quit"), self.quit)
+        tk.Label(self.root, text=t("pnl.page", url=url), fg=DIM, bg=BG,
                  font=("Segoe UI", 8), padx=16, pady=10).pack(anchor="w")
 
         self.overlay = None
@@ -52,7 +53,7 @@ class Panel:
             from .overlay import Overlay
             self.overlay = Overlay(advisor, alpha, master=self.root)
         else:
-            self.ov_btn.configure(state="disabled", text="Overlay desligado")
+            self.ov_btn.configure(state="disabled", text=t("pnl.overlay_off"))
         self.root.after(300, self._tick)
 
     def _button(self, parent, text, cmd, primary=False):
@@ -74,7 +75,7 @@ class Panel:
             self.status.configure(text=s.get("message") or s.get("status", ""))
             self.dot.configure(fg=DOT.get(s.get("status"), DIM))
         if self.overlay:
-            self.ov_btn.configure(text="Mostrar overlay" if self.overlay.hidden else "Ocultar overlay")
+            self.ov_btn.configure(text=t("pnl.show_overlay") if self.overlay.hidden else t("pnl.hide_overlay"))
         self.root.after(1000, self._tick)
 
     def quit(self):

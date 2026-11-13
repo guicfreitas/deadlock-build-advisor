@@ -9,7 +9,9 @@ from importlib import resources
 from urllib.parse import urlparse
 
 from . import clipboard, config, gamebuild
+from . import about, i18n
 from .app import Advisor
+from .i18n import t
 
 STATIC = {"/": ("index.html", "text/html; charset=utf-8"),
           "/app.js": ("app.js", "application/javascript; charset=utf-8"),
@@ -45,10 +47,15 @@ def make_handler(advisor: Advisor):
                 check = advisor.setup_check()
                 advisor.state.update(setup=check)
                 if check["ok"] and advisor.state.snapshot()["status"] == "setup":
-                    advisor.state.update(status="idle", message="Aguardando partida…")
+                    advisor.state.update(status="idle", message=t("msg.waiting"))
                 return self._json(check)
             if path == "/api/settings":
                 return self._json(config.settings_view(advisor.cfg))
+            if path == "/api/i18n":
+                return self._json({"lang": i18n.current(), "strings": i18n.strings(),
+                                   "languages": [{"code": c, "name": n[0]} for c, n in i18n.LANGUAGES.items()]})
+            if path == "/api/about":
+                return self._json(about.info(advisor.cfg))
             if path == "/api/heroes":
                 try:
                     cat = advisor.catalog
@@ -63,21 +70,21 @@ def make_handler(advisor: Advisor):
             try:
                 body = json.loads(self.rfile.read(length) or b"{}")
             except ValueError:
-                return self._json({"error": "json inválido"}, 400)
+                return self._json({"error": t("err.invalid_json")}, 400)
             if path == "/api/manual":
                 try:
                     hero = int(body["hero_id"])
                     enemies = [int(x) for x in body.get("enemies", [])]
                     lane = [int(x) for x in body.get("lane_enemies", [])]
                 except (KeyError, ValueError, TypeError):
-                    return self._json({"error": "hero_id/enemies inválidos"}, 400)
+                    return self._json({"error": t("err.invalid_manual")}, 400)
                 threading.Thread(target=lambda: _safe(advisor.compute_manual, hero, enemies, lane),
                                  daemon=True).start()
                 return self._json({"ok": True})
             if path == "/api/copy-build":  # share code for the game's "Colar guia" button
                 rec = advisor.state.snapshot().get("recommendation")
                 if not rec:
-                    return self._json({"error": "nenhuma build calculada ainda"}, 409)
+                    return self._json({"error": t("err.no_build")}, 409)
                 if blocked := advisor.copy_blocked():
                     return self._json({"error": blocked}, 409)
                 build = gamebuild.from_recommendation(rec, advisor.cfg.account_id)
@@ -87,23 +94,23 @@ def make_handler(advisor: Advisor):
                 return self._json({"ok": True, "copied": copied, "code": code})
             if path == "/api/settings":
                 if not isinstance(body, dict):
-                    return self._json({"error": "json inválido"}, 400)
+                    return self._json({"error": t("err.invalid_json")}, 400)
                 try:
                     result = config.update_settings(advisor.cfg, body)
                 except OSError as e:
-                    return self._json({"error": f"não consegui salvar: {e}"}, 500)
+                    return self._json({"error": t("err.save_failed")}, 500)
                 if not result["errors"]:
                     advisor.reload_settings()
                 return self._json(result | {"settings": config.settings_view(advisor.cfg)},
                                   400 if result["errors"] else 200)
             if path == "/api/update":
                 if not advisor.updater:
-                    return self._json({"error": "atualização automática indisponível"}, 409)
+                    return self._json({"error": t("err.update_unavailable")}, 409)
                 r = advisor.updater.install()
                 return self._json(r, 409 if r.get("error") else 200)
             if path == "/api/restart":
                 if not advisor.on_restart:
-                    return self._json({"error": "reinício automático indisponível; feche e abra o app"}, 409)
+                    return self._json({"error": t("err.restart_unavailable")}, 409)
                 self._json({"ok": True})
                 threading.Timer(0.5, advisor.on_restart).start()
                 return None
@@ -111,7 +118,7 @@ def make_handler(advisor: Advisor):
                 try:
                     advisor.start_match(int(body["match_id"]))
                 except (KeyError, ValueError, TypeError):
-                    return self._json({"error": "match_id inválido"}, 400)
+                    return self._json({"error": t("err.invalid_match")}, 400)
                 return self._json({"ok": True})
             self._send(404, b"not found", "text/plain")
 
@@ -154,7 +161,7 @@ def serve(advisor: Advisor, port: int, wait_s: float = 0) -> ThreadingHTTPServer
             break
         except OSError as e:
             if time.time() >= deadline:
-                raise PortInUse(f"porta {port} em uso") from e
+                raise PortInUse(f"port {port} in use") from e
             time.sleep(0.3)
     threading.Thread(target=httpd.serve_forever, daemon=True, name="web").start()
     return httpd

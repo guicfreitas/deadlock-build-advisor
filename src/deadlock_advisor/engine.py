@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 
 from . import abilities
 from .api import DeadlockApi
+from .i18n import t
 
 
 @dataclass
@@ -77,7 +78,7 @@ class Catalog:
         self.by_class = {i["class_name"]: i for i in items}
 
     def hero_name(self, hid: int) -> str:
-        return self.heroes.get(hid, {}).get("name", f"Herói {hid}")
+        return self.heroes.get(hid, {}).get("name") or t("msg.hero_fallback", id=hid)
 
     def hero_view(self, hid: int) -> dict:
         h = self.heroes.get(hid, {})
@@ -314,7 +315,7 @@ class Recommender:
             except Exception:  # noqa: BLE001 - a missing name is cosmetic
                 asset = {}
             info[a] = {"id": a, "class_name": asset.get("class_name"),
-                       "name": asset.get("name") or f"Habilidade {a}",
+                       "name": asset.get("name") or t("msg.ability_fallback", id=a),
                        "image": asset.get("image_webp") or asset.get("image")}
         # number abilities by their key in game (signature1..4), not by unlock order
         sig = (self.cat.heroes.get(hero_id) or {}).get("items") or {}

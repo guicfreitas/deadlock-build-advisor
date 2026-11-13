@@ -25,12 +25,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from .i18n import t
+
 DEFAULT_REPO = "guicfreitas/deadlock-build-advisor"
 ASSET_RE = re.compile(r"^DeadlockBuildAdvisor-Setup-[\w.\-]+\.exe$", re.I)
 CHECK_EVERY_S = 6 * 3600
 FIRST_CHECK_S = 15          # let the app finish starting first
 BUSY_RETRY_S = 60
 USER_AGENT = "deadlock-build-advisor-updater"
+
+
+class UpdateError(RuntimeError):
+    """A failure whose message is already fit to show the player."""
 
 
 def parse_version(v: str) -> tuple[int, ...]:
@@ -90,7 +96,7 @@ def latest_release(repo: str) -> Release | None:
 def download(rel: Release, dest_dir: Path, progress: Callable[[int, int], None] | None = None) -> Path:
     """Download and verify the installer. Refuses a release without a SHA-256."""
     if not rel.sha256 or not re.fullmatch(r"[0-9a-f]{64}", rel.sha256):
-        raise RuntimeError("a versão nova não tem checksum SHA-256; não vou instalar")
+        raise UpdateError(t("upd.unverified"))
     dest_dir.mkdir(parents=True, exist_ok=True)
     final = dest_dir / rel.name
     if final.exists() and _sha256(final) == rel.sha256:
@@ -108,7 +114,7 @@ def download(rel: Release, dest_dir: Path, progress: Callable[[int, int], None] 
                 progress(done, total)
     if h.hexdigest() != rel.sha256:
         part.unlink(missing_ok=True)
-        raise RuntimeError("o download não bate com o checksum; descartado")
+        raise UpdateError(t("upd.corrupt"))
     part.replace(final)
     for old in dest_dir.glob("DeadlockBuildAdvisor-Setup-*.exe"):  # keep only the newest
         if old != final:
@@ -200,7 +206,7 @@ class Updater:
                     traceback.print_exc()
                     # quiet: an unreachable GitHub is not worth a banner unless we had news
                     self._publish(state="error" if self._view["available"] else "idle",
-                                  message=f"Não consegui baixar a atualização: {e}")
+                                  message=str(e) if isinstance(e, UpdateError) else t("upd.download_failed"))
             if self.ready_to_auto_install():
                 self.install()
                 return
@@ -219,32 +225,31 @@ class Updater:
         ver = rel.version.lstrip("v")
         if not self.frozen:
             self._publish(state="available", available=True, version=ver,
-                          message=f"Versão {ver} disponível (você roda do código-fonte: atualize com git pull).")
+                          message=t("upd.manual", ver=ver))
             return
         self._publish(state="downloading", available=True, version=ver,
-                      message=f"Baixando a versão {ver}…")
+                      message=t("upd.downloading", ver=ver))
         last = [0.0]
 
         def progress(done, total):
             if total and time.time() - last[0] > 1:
                 last[0] = time.time()
-                self._publish(message=f"Baixando a versão {ver}… {100 * done // total}%")
+                self._publish(message=t("upd.downloading_pct", ver=ver, pct=100 * done // total))
         self.installer = download(rel, self.download_dir, progress)
         self._publish(state="ready", message=(
-            f"Versão {ver} baixada. Instala sozinha quando você não estiver em partida."
-            if self.auto() else f"Versão {ver} pronta para instalar."))
+            t("upd.ready_auto", ver=ver) if self.auto() else t("upd.ready", ver=ver)))
 
     def install(self) -> dict:
         """Run the downloaded installer and close the app (the installer reopens it)."""
         with self._lock:
             if not self.frozen:
-                return {"error": "rodando do código-fonte: atualize com git pull"}
+                return {"error": t("upd.manual_only")}
             if not self.installer or not self.installer.exists():
-                return {"error": "nenhuma atualização baixada ainda"}
+                return {"error": t("upd.none")}
             if self._installing:
                 return {"ok": True}
             self._installing = True
-        self._publish(state="installing", message="Instalando a atualização… o app reabre sozinho.")
+        self._publish(state="installing", message=t("upd.installing"))
         try:
             flags = 0
             if sys.platform == "win32":
@@ -253,7 +258,7 @@ class Updater:
                              creationflags=flags, close_fds=True)
         except OSError as e:
             self._installing = False
-            self._publish(state="error", message=f"Não consegui abrir o instalador: {e}")
+            self._publish(state="error", message=t("upd.install_failed"))
             return {"error": str(e)}
         # leave before the installer replaces our files (it also closes us via /CLOSEAPPLICATIONS)
         threading.Timer(1.0, self.quit_app).start()

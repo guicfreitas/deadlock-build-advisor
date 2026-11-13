@@ -14,6 +14,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Iterator
 
+from . import i18n
+
 BASE_URL = "https://api.deadlock-api.com"
 USER_AGENT = "deadlock-build-advisor/0.1"
 
@@ -125,10 +127,10 @@ class DeadlockApi:
 
     # ------------------------------------------------------------- endpoints
     def heroes(self) -> list[dict]:
-        return self.get("/v1/assets/heroes", {"only_active": True}, ttl_s=24 * 3600)
+        return self.get("/v1/assets/heroes", {"only_active": True, "language": i18n.api_language()}, ttl_s=24 * 3600)
 
     def upgrade_items(self) -> list[dict]:
-        return self.get("/v1/assets/items/by-type/upgrade", ttl_s=24 * 3600)
+        return self.get("/v1/assets/items/by-type/upgrade", {"language": i18n.api_language()}, ttl_s=24 * 3600)
 
     def analytics(self, path: str, params: dict[str, Any], **kw) -> Any:
         """Heavy queries over the API's default 30-day window can time out (HTTP 504, and the
@@ -152,7 +154,7 @@ class DeadlockApi:
 
     def ability(self, ability_id: int) -> dict:
         # one asset at a time: the whole ability list is ~4 MB
-        return self.get(f"/v1/assets/items/{int(ability_id)}", ttl_s=24 * 3600)
+        return self.get(f"/v1/assets/items/{int(ability_id)}", {"language": i18n.api_language()}, ttl_s=24 * 3600)
 
     def hero_counter_stats(self, **params) -> list[dict]:
         return self.analytics("/v1/analytics/hero-counter-stats", params)
