@@ -12,10 +12,16 @@ function heroHtml(h, big = false) {
 function itemHtml(it) {
   const cls = it.lift > 0 ? "pos" : it.lift < 0 ? "neg" : "";
   const sign = it.lift > 0 ? "+" : "";
-  return `<div class="item ${esc(it.slot)}" title="Comprado em média aos ${it.avg_buy_min} min · ${it.matches} partidas · popularidade ${it.pop}%">
+  const stats = it.wr != null ? ` · ${it.wr}% <span class="lift ${cls}">(${sign}${it.lift})</span>` : "";
+  const cost = it.upgrade_cost != null ? `+${it.upgrade_cost}` : `${it.cost}`;
+  const title = it.wr != null
+    ? `Comprado em média aos ${it.avg_buy_min} min · ${it.matches} partidas · popularidade ${it.pop}%`
+    : "Componente: compre antes para depois evoluir";
+  const step = it.upgrades_to ? `<div class="step">→ vira ${esc(it.upgrades_to)}</div>` : "";
+  return `<div class="item ${esc(it.slot)}${it.upgrades_to ? " component" : ""}" title="${esc(title)}">
     <img src="${esc(it.image)}" alt="">
     <div><div class="name">${esc(it.name)}${it.active ? " ⚡" : ""}</div>
-    <div class="meta">${it.cost} · ${it.wr}% <span class="lift ${cls}">(${sign}${it.lift})</span></div></div></div>`;
+    <div class="meta">${cost}${stats}</div>${step}</div></div>`;
 }
 
 function miniItem(it, cls = "") {

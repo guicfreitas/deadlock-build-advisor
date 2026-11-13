@@ -61,3 +61,19 @@ def test_roster_lanes_locked():
     assert not _build_roster(1, players, 0).lanes_locked
     players[3].lane_locked = True
     assert _build_roster(1, players, 0).lanes_locked
+
+
+def test_watch_roster_reports_lanes_locking_without_a_swap():
+    # match 136381678 (2026-11-12): lanes locked with no swap, and the page never learned it
+    locked = [dict(r, m_bLaneSwapLocked=True) for r in LOBBY]
+    seen = []
+    watch_roster(FakeApi(LOBBY + locked + ["ping"]), 1, ME, seen.append, check_every_s=0)
+    assert seen and seen[-1].lanes_locked
+    assert not seen[0].lanes_locked
+
+
+def test_relay_status_is_translated():
+    from deadlock_advisor.live import status_pt
+    msg = "Broadcast relay not ready yet (attempt 4: Valve relay: Broadcast not ready), retrying..."
+    assert "Valve" in status_pt(msg) and "attempt" not in status_pt(msg)
+    assert status_pt("Jogadores encontrados") == "Jogadores encontrados"

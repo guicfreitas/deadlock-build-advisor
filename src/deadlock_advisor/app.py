@@ -204,9 +204,13 @@ class Advisor:
 
     def _planned(self, rec: dict) -> list[int]:
         if self._copied:
-            return list(self._copied)
-        full = rec.get("full_build", {})
-        return [i["id"] for i in rec.get("lane_build", []) + full.get("mid", []) + full.get("late", [])]
+            planned = list(self._copied)
+        else:
+            full = rec.get("full_build", {})
+            planned = [i["id"] for i in rec.get("lane_build", []) + full.get("mid", []) + full.get("late", [])]
+        # a component is a step towards a planned upgrade, never something to swap out
+        comps = {c for i in planned for c in self.catalog.components(i)}
+        return [i for i in planned if i not in comps]
 
     def update_counters(self, items_by_account: dict[int, list[int]]) -> dict | None:
         """Turn one items snapshot into swap suggestions and publish them."""

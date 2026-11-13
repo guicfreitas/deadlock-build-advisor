@@ -112,7 +112,7 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
         if event == "ping":
             pass
         elif event == "status":
-            on_status(data.get("message", "") if isinstance(data, dict) else str(data))
+            on_status(status_pt(data.get("message", "") if isinstance(data, dict) else str(data)))
         elif event == "error":
             msg = data.get("error") if isinstance(data, dict) else str(data)
             raise ApiError(msg or "erro no live query")
@@ -138,6 +138,16 @@ def roster_from_broadcast(api: DeadlockApi, match_id: int, account_id: int,
     if not latest:
         raise ApiError("Broadcast sem jogadores ainda.")
     return _build_roster(match_id, list(latest.values()), account_id)
+
+
+def status_pt(msg: str) -> str:
+    """deadlock-api reports its own retries in English; the page is in Portuguese."""
+    low = msg.lower()
+    if "not ready" in low:
+        return "Aguardando a transmissão da Valve ficar pronta (costuma levar 1 a 2 min)…"
+    if "spectat" in low:
+        return "Conectando à transmissão ao vivo da partida…"
+    return msg
 
 
 def _row_to_player(data) -> Player | None:
@@ -189,7 +199,9 @@ def watch_roster(api: DeadlockApi, match_id: int, account_id: int,
             if time.time() - last_check < check_every_s or len(latest) < 12:
                 continue
             last_check = time.time()
-            sig = tuple(sorted((x.account_id, x.hero_id, x.team, x.lane) for x in latest.values()))
+            # lane_locked too: lanes often lock without any swap, and the page must learn that
+            sig = tuple(sorted((x.account_id, x.hero_id, x.team, x.lane, x.lane_locked)
+                               for x in latest.values()))
             if sig == last_sig:
                 continue
             last_sig = sig

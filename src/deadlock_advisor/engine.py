@@ -84,17 +84,27 @@ class Catalog:
         return {"id": hid, "name": self.hero_name(hid),
                 "image": img.get("icon_image_small_webp") or img.get("icon_image_small")}
 
-    def item_view(self, s: ItemScore) -> dict:
-        i = self.items[s.item_id]
-        comps = [self.by_class[c]["id"] for c in (i.get("component_items") or []) if c in self.by_class]
+    def components(self, iid: int) -> list[int]:
+        """Shop items this one is upgraded from (consumed when you buy it)."""
+        i = self.items.get(iid) or {}
+        return [self.by_class[c]["id"] for c in (i.get("component_items") or [])
+                if c in self.by_class and self.by_class[c]["id"] in self.items]
+
+    def bare_item_view(self, iid: int) -> dict:
+        """An item without stats for this hero (e.g. a component nobody keeps for long)."""
+        i = self.items[iid]
         return {
-            "id": s.item_id, "name": i["name"], "tier": i["item_tier"], "cost": i["cost"],
+            "id": iid, "name": i["name"], "tier": i["item_tier"], "cost": i["cost"],
             "slot": i["item_slot_type"], "active": bool(i.get("is_active_item")),
             "image": i.get("shop_image_webp") or i.get("image"),
+            "components": self.components(iid),
+        }
+
+    def item_view(self, s: ItemScore) -> dict:
+        return self.bare_item_view(s.item_id) | {
             "wr": round(s.wr * 100, 1), "base_wr": round(s.base_wr * 100, 1),
             "lift": round(s.lift * 100, 1), "pop": round(s.rel_pop * 100),
             "matches": s.matches, "avg_buy_min": round(s.avg_buy_s / 60, 1),
-            "components": comps,
         }
 
 
@@ -154,22 +164,76 @@ class Recommender:
 
     # ---------------------------------------------------------- selection
     def pick_lane(self, scores: dict[int, ItemScore]) -> list[ItemScore]:
+        """Best items that fit the laning budget. An upgrade only costs what it adds on top
+        of its components (the component is consumed), and a component of an item already
+        picked is skipped: `with_components` puts it back in front of its upgrade."""
         c = self.cfg
         cands = sorted((s for s in scores.values() if self.cat.items[s.item_id]["item_tier"] <= 2),
                        key=lambda s: -s.score)
-        chosen, budget = [], c.lane_budget
+        chosen: list[ItemScore] = []
+        budget = c.lane_budget
         for s in cands:
-            cost = self.cat.items[s.item_id]["cost"]
-            if cost <= budget and len(chosen) < c.lane_max_items:
+            if len(chosen) >= c.lane_max_items:
+                break
+            ids = {x.item_id for x in chosen}
+            if any(s.item_id in self.cat.components(x) for x in ids):
+                continue  # comes for free as the first step of an upgrade already picked
+            comps = self.cat.components(s.item_id)
+            cost = self.cat.items[s.item_id]["cost"] - sum(
+                self.cat.items[x]["cost"] for x in comps if x in ids)
+            if cost <= budget:
                 chosen.append(s)
                 budget -= cost
         return sorted(chosen, key=lambda s: s.avg_buy_s)
 
+    def with_components(self, phases: list[list[dict]], scores: dict[int, ItemScore]) -> None:
+        """Show how the build grows: put each upgrade's components (usually tier 1) right
+        before it, unless already bought earlier, and mark them with `upgrades_to`.
+        `upgrade_cost` is what the upgrade adds once its components are owned.
+        Edits the item views in place, in build order (lane, mid, late)."""
+        seen: dict[int, dict] = {}
+        for items in phases:
+            out: list[dict] = []
+            for v in items:
+                if v["id"] in seen:
+                    continue  # already in the build as a component of an earlier upgrade
+                owned = 0
+                for cid in v.get("components", []):
+                    comp = seen.get(cid)
+                    if comp is None:
+                        s = scores.get(cid)
+                        comp = self.cat.item_view(s) if s else self.cat.bare_item_view(cid)
+                        out.append(comp)
+                        seen[cid] = comp
+                    comp.setdefault("upgrades_to", v["name"])
+                    owned += comp["cost"]
+                if owned:
+                    v["upgrade_cost"] = max(0, v["cost"] - owned)
+                out.append(v)
+                seen[v["id"]] = v
+            items[:] = out
+
+    @staticmethod
+    def spent(items: list[dict]) -> int:
+        """Souls spent on these items: an upgrade only adds its `upgrade_cost` when its
+        components are in the same list (they are consumed into it)."""
+        ids = {v["id"] for v in items}
+        total = 0
+        for v in items:
+            if v.get("components") and all(c in ids for c in v["components"]):
+                total += v.get("upgrade_cost", v["cost"])
+            else:
+                total += v["cost"]
+        return total
+
     def pick_full(self, scores: dict[int, ItemScore], lane: list[ItemScore]) -> dict[str, list[ItemScore]]:
         c = self.cfg
         taken = {s.item_id for s in lane}
+        # a component consumed by a lane upgrade does not hold an inventory slot
+        consumed = {x for s in lane for x in self.cat.components(s.item_id)}
+        kept = [s for s in lane if s.item_id not in consumed]
         slot_count: dict[str, int] = {}
-        for s in lane:
+        for s in kept:
             st = self.cat.items[s.item_id]["item_slot_type"]
             slot_count[st] = slot_count.get(st, 0) + 1
 
@@ -178,7 +242,7 @@ class Recommender:
                 return "early"
             return "mid" if s.avg_buy_s < c.late_start_s else "late"
 
-        quotas = {"mid": 4, "late": max(0, c.total_slots - len(lane) - 4)}
+        quotas = {"mid": 4, "late": max(0, c.total_slots - len(kept) - 4)}
         phases: dict[str, list[ItemScore]] = {"early": list(lane), "mid": [], "late": []}
         for s in sorted(scores.values(), key=lambda s: -s.score):
             item = self.cat.items[s.item_id]
@@ -291,6 +355,11 @@ class Recommender:
         counters = self.counters(per_enemy)
 
         iv = self.cat.item_view
+        lane_views = [iv(s) for s in lane]
+        full_views = {"early": lane_views, "mid": [iv(s) for s in phases["mid"]],
+                      "late": [iv(s) for s in phases["late"]]}
+        self.with_components([lane_views, full_views["mid"], full_views["late"]],
+                             lane_scores | {k: v for k, v in full_scores.items() if k not in lane_scores})
         mu_lane, mu_all = res["mu_lane"], res["mu_all"]
         return {
             "hero": self.cat.hero_view(hero_id),
@@ -298,9 +367,9 @@ class Recommender:
             "enemies": [self.cat.hero_view(e) | {"matchup": mu_all.get(e),
                                                  "counters": [iv(s) for s in counters.get(e, [])]}
                         for e in enemy_ids],
-            "lane_build": [iv(s) for s in lane],
-            "lane_cost": sum(self.cat.items[s.item_id]["cost"] for s in lane),
-            "full_build": {k: [iv(s) for s in v] for k, v in phases.items()},
+            "lane_build": lane_views,
+            "lane_cost": self.spent(lane_views),
+            "full_build": full_views,
             "ability_order": res["abilities"],
             "settings": {"lane_window_min": round(lw / 60, 1), "filters": f},
             # every scored item's lift vs this lobby (pp): lets mid-match counters pick the
