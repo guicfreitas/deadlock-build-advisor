@@ -73,7 +73,10 @@ Everything is optional and lives in **Settings** on the app's page: game folder,
 
 Found a bug or have an idea? Use **Feedback & help** at the bottom of the app's page: it opens a GitHub issue with your app version already filled in (no personal data). You can also [open an issue](../../issues/new) directly.
 
-The app is free, has no ads and nothing is locked. If it helps you, you can chip in through the support links in the app.
+The app is free, has no ads and nothing is locked. If it helps you, you can chip in:
+
+- ☕ [Buy Me a Coffee](https://buymeacoffee.com/guicfreitas)
+- 💬 Discord: `_guicf`
 
 ## Development
 

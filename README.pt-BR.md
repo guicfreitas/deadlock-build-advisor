@@ -189,6 +189,14 @@ Encontrou um bug ou tem uma ideia? Use **Feedback e ajuda** na página do app (e
 - [x] Atualização automática.
 - [ ] Atalho global para mostrar ou esconder o overlay.
 
+## Feedback e apoio
+
+Achou um bug ou tem uma ideia? Use **Feedback e ajuda** na página do app ou abra uma *issue*. Também dá para falar comigo no Discord: `_guicf`.
+
+O app é grátis, sem anúncios e nada é bloqueado. Se ele te ajudou, você pode contribuir:
+
+- ☕ [Buy Me a Coffee](https://buymeacoffee.com/guicfreitas)
+
 ## Licença
 
 Todos os direitos reservados. O código está aqui só para consulta: você pode ver o código e usar o app pelos instaladores oficiais, para uso pessoal e não comercial. Copiar, modificar, redistribuir ou vender, no todo ou em parte, não é permitido sem autorização por escrito. Veja o arquivo [LICENSE](LICENSE).
