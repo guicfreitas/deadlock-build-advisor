@@ -32,6 +32,7 @@ class EngineConfig:
     lane_budget: int = 5600           # souls you can expect to spend in that window
     lane_max_items: int = 6
     total_slots: int = 12
+    mid_items: int = 4                # picks reserved for the mid game before late fills the rest
     max_per_slot_type: int = 6
     prior_strength: float = 150.0     # pseudo-matches pulling WR toward the baseline
     lift_weight: float = 3.0          # how much matchup-specific lift matters
@@ -200,7 +201,9 @@ class Recommender:
                 owned = 0
                 for cid in v.get("components", []):
                     comp = seen.get(cid)
-                    if comp is None:
+                    # an earlier upgrade already consumed it (Fortitude and Colossus both
+                    # take Extra Health): this upgrade needs a fresh one
+                    if comp is None or "upgrades_to" in comp:
                         s = scores.get(cid)
                         comp = self.cat.item_view(s) if s else self.cat.bare_item_view(cid)
                         out.append(comp)
@@ -226,37 +229,47 @@ class Recommender:
                 total += v["cost"]
         return total
 
+    def held(self, ids: list[int]) -> list[int]:
+        """The items that end up in the inventory: components are consumed by their upgrade."""
+        consumed = {x for i in ids for x in self.cat.components(i)}
+        return [i for i in ids if i not in consumed]
+
     def pick_full(self, scores: dict[int, ItemScore], lane: list[ItemScore]) -> dict[str, list[ItemScore]]:
+        """Fill the inventory up to `total_slots`. Slots are counted on what is really held at
+        the end: an upgrade of an item already in the build takes no new slot (a real match
+        on 2026-11-12 ended with Graves' build two slots short of a full inventory)."""
         c = self.cfg
-        taken = {s.item_id for s in lane}
-        # a component consumed by a lane upgrade does not hold an inventory slot
-        consumed = {x for s in lane for x in self.cat.components(s.item_id)}
-        kept = [s for s in lane if s.item_id not in consumed]
-        slot_count: dict[str, int] = {}
-        for s in kept:
-            st = self.cat.items[s.item_id]["item_slot_type"]
-            slot_count[st] = slot_count.get(st, 0) + 1
+        taken = [s.item_id for s in lane]
 
         def phase(s: ItemScore) -> str:
             if s.avg_buy_s < c.mid_start_s:
                 return "early"
             return "mid" if s.avg_buy_s < c.late_start_s else "late"
 
-        quotas = {"mid": 4, "late": max(0, c.total_slots - len(kept) - 4)}
+        def fits(iid: int) -> bool:
+            after = self.held(taken + [iid])
+            if len(after) > c.total_slots:
+                return False
+            st = self.cat.items[iid]["item_slot_type"]
+            return sum(self.cat.items[i]["item_slot_type"] == st for i in after) <= c.max_per_slot_type
+
+        cands = [s for s in sorted(scores.values(), key=lambda s: -s.score)
+                 if phase(s) != "early" and self.cat.items[s.item_id]["item_tier"] >= 2]
         phases: dict[str, list[ItemScore]] = {"early": list(lane), "mid": [], "late": []}
-        for s in sorted(scores.values(), key=lambda s: -s.score):
-            item = self.cat.items[s.item_id]
-            ph = phase(s)
-            if s.item_id in taken or ph == "early" or item["item_tier"] < 2:
-                continue
-            if len(phases[ph]) >= quotas[ph]:
-                continue
-            st = item["item_slot_type"]
-            if slot_count.get(st, 0) >= c.max_per_slot_type:
-                continue
-            phases[ph].append(s)
-            taken.add(s.item_id)
-            slot_count[st] = slot_count.get(st, 0) + 1
+        # mid gets its picks first so late items can't crowd it out, then late fills the
+        # inventory, then anything left (mid or late) if late ran out of candidates
+        for allowed, cap in ((("mid",), c.mid_items), (("late",), None), (("mid", "late"), None)):
+            for s in cands:
+                if len(self.held(taken)) >= c.total_slots:
+                    break
+                ph = phase(s)
+                if ph not in allowed or s.item_id in taken or (cap is not None and len(phases[ph]) >= cap):
+                    continue
+                if any(s.item_id in self.cat.components(t) for t in taken):
+                    continue  # already in the build as the first step of an upgrade
+                if fits(s.item_id):
+                    phases[ph].append(s)
+                    taken.append(s.item_id)
         for k in ("mid", "late"):
             phases[k].sort(key=lambda s: s.avg_buy_s)
         return phases

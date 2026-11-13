@@ -88,3 +88,33 @@ def test_lane_build_shows_tier1_components_before_their_upgrades():
     assert views[1]["upgrade_cost"] == 800 and "wr" not in views[2]
     assert r.spent(views) == 3200
     assert [v["name"] for v in mid] == ["Health", "Fortitude"]
+
+
+def test_full_build_fills_every_slot_when_upgrades_free_some():
+    # Graves on 2026-11-12: two upgrades consumed build items and the build ended 2 slots short
+    items = [{"id": i, "name": f"T{i}", "class_name": f"c{i}", "shopable": True, "item_tier": 4,
+              "cost": 6400, "item_slot_type": ("weapon", "spirit", "vitality")[i % 3]} for i in range(10, 30)]
+    items += [{"id": 1, "name": "Small", "class_name": "small", "shopable": True, "item_tier": 2, "cost": 1600,
+               "item_slot_type": "spirit"},
+              {"id": 2, "name": "Big", "class_name": "big", "shopable": True, "item_tier": 4, "cost": 6400,
+               "item_slot_type": "spirit", "component_items": ["small"]}]
+    r = Recommender(api=None, catalog=Catalog(HEROES, items), cfg=EngineConfig(min_matches=10))
+    rows = [row(1, 600, 1000, 700), row(2, 600, 1000, 1800)] + [row(i, 550 - i, 1000, 1800) for i in range(10, 30)]
+    s = r.score_items(rows, rows)
+    lane = [s[i] for i in (10, 11, 12)]
+    phases = r.pick_full(s, lane)
+    ids = [x.item_id for ph in phases.values() for x in ph]
+    assert 1 in ids and 2 in ids  # Big consumes Small: Small does not hold a slot
+    assert len(r.held(ids)) == r.cfg.total_slots
+
+
+def test_two_upgrades_sharing_a_component_buy_it_twice():
+    items = UPGRADE_ITEMS + [{"id": 7, "name": "Colossus", "class_name": "colossus", "shopable": True,
+                              "item_tier": 4, "cost": 6400, "item_slot_type": "vitality",
+                              "component_items": ["health"]}]
+    r = Recommender(api=None, catalog=Catalog(HEROES, items), cfg=EngineConfig(min_matches=10))
+    mid, late = [r.cat.bare_item_view(5)], [r.cat.bare_item_view(7)]
+    r.with_components([mid, late], {})
+    assert [v["name"] for v in mid] == ["Health", "Fortitude"]
+    assert [v["name"] for v in late] == ["Health", "Colossus"]
+    assert late[0]["upgrades_to"] == "Colossus"
