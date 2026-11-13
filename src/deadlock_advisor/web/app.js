@@ -69,6 +69,7 @@ function renderAbilities(order) {
 }
 
 function renderUpdate(u) {
+  if (u?.current) $("#app-version").textContent = `v${u.current}`;
   const show = u && (u.available || u.state === "downloading" || u.state === "installing" || u.state === "error");
   $("#update").classList.toggle("hidden", !show);
   if (!show) return;

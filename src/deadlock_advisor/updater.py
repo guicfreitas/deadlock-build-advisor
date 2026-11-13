@@ -124,13 +124,46 @@ def _sha256(p: Path) -> str:
     return h.hexdigest()
 
 
-def installer_args(exe_path: str) -> list[str]:
-    """Silent Inno Setup flags. An all-users install (Program Files) has to be updated as
-    all-users, or a second per-user copy would appear; that one asks for admin (UAC)."""
+# AppId from packaging/installer.iss; Inno registers the install under "<AppId>_is1"
+UNINSTALL_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{7C1E0B9A-5D7E-4C2B-9C1F-3E1D2B6A8F41}_is1"
+
+
+def _same_dir(a: str, b: str) -> bool:
+    norm = lambda p: os.path.normcase(os.path.normpath(p.strip().strip('"')))
+    return bool(a and b) and norm(a) == norm(b)
+
+
+def registered_scope(app_dir: str) -> str | None:
+    """'user' or 'machine': which uninstall entry (HKCU or HKLM) points at this folder."""
+    try:
+        import winreg
+    except ImportError:
+        return None
+    for hive, scope in ((winreg.HKEY_CURRENT_USER, "user"), (winreg.HKEY_LOCAL_MACHINE, "machine")):
+        try:
+            with winreg.OpenKey(hive, UNINSTALL_KEY, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as k:
+                if _same_dir(winreg.QueryValueEx(k, "InstallLocation")[0], app_dir):
+                    return scope
+        except OSError:
+            continue
+    return None
+
+
+def installer_args(exe_path: str, scope: str | None = None) -> list[str]:
+    """Silent Inno Setup flags that update the copy that is running, in place: same scope
+    and same folder. Getting the scope wrong installs a second copy: on 2026-11-12 a per-user
+    install in G:\\ was guessed as all-users (not under LOCALAPPDATA) and 0.2.1 landed in
+    Program Files next to it. The registry is the truth; the path is only a fallback."""
+    app_dir = os.path.dirname(exe_path)
     args = ["/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"]
-    local = os.environ.get("LOCALAPPDATA", "")
-    per_user = bool(local) and os.path.normcase(exe_path).startswith(os.path.normcase(local))
-    return args + (["/CURRENTUSER"] if per_user else ["/ALLUSERS"])
+    scope = scope or registered_scope(app_dir)
+    if scope is None:
+        local = os.environ.get("LOCALAPPDATA", "")
+        scope = "user" if local and os.path.normcase(exe_path).startswith(os.path.normcase(local)) else "machine"
+    args.append("/CURRENTUSER" if scope == "user" else "/ALLUSERS")
+    if app_dir:
+        args.append(f"/DIR={app_dir}")
+    return args
 
 
 class Updater:
