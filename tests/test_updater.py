@@ -63,9 +63,24 @@ def test_download_verifies_checksum(tmp_path, monkeypatch):
 
 def test_installer_args_keep_the_install_scope(monkeypatch):
     monkeypatch.setenv("LOCALAPPDATA", r"C:\Users\me\AppData\Local")
+    monkeypatch.setattr(u, "registered_scope", lambda d: None)  # registry unreadable: path fallback
     assert "/CURRENTUSER" in u.installer_args(r"C:\Users\me\AppData\Local\Programs\DBA\app.exe")
     assert "/ALLUSERS" in u.installer_args(r"C:\Program Files\DBA\app.exe")
     assert "/SILENT" in u.installer_args("x")
+
+
+def test_registry_scope_wins_over_the_path(monkeypatch):
+    # 2026-11-12: per-user install in G:\ was updated as all-users -> two copies
+    monkeypatch.setenv("LOCALAPPDATA", r"C:\Users\me\AppData\Local")
+    monkeypatch.setattr(u, "registered_scope", lambda d: "user" if d == r"G:\DBA" else None)
+    args = u.installer_args(r"G:\DBA\app.exe")
+    assert "/CURRENTUSER" in args and "/ALLUSERS" not in args
+    assert r"/DIR=G:\DBA" in args
+
+
+def test_same_dir_ignores_case_quotes_and_trailing_slash():
+    assert u._same_dir('"G:\\DeadlockBuildAdvisor\\"', r"g:\deadlockbuildadvisor")
+    assert not u._same_dir("", r"G:\x")
 
 
 class State:

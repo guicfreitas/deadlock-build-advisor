@@ -7,6 +7,7 @@
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
 header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 h1 { margin: 0; font-size: 18px; letter-spacing: .5px; color: var(--acc); }
+.app-version { color: var(--dim); font-size: 12px; font-weight: 400; letter-spacing: 0; }
 h2 { margin: 0 0 10px; font-size: 15px; }
 h2 small, h3 { color: var(--dim); font-weight: 400; font-size: 12px; }
 h3 { margin: 12px 0 6px; text-transform: uppercase; letter-spacing: 1px; }
