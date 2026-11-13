@@ -76,6 +76,8 @@ def make_handler(advisor: Advisor):
                 rec = advisor.state.snapshot().get("recommendation")
                 if not rec:
                     return self._json({"error": "nenhuma build calculada ainda"}, 409)
+                if blocked := advisor.copy_blocked():
+                    return self._json({"error": blocked}, 409)
                 build = gamebuild.from_recommendation(rec, advisor.cfg.account_id)
                 code = build.share_code()
                 copied = clipboard.set_text(code)
