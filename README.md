@@ -44,7 +44,7 @@ Por que não ler os heróis direto do jogo? Porque o Deadlock não expõe essa i
 1. **Baixe e rode o instalador** `DeadlockBuildAdvisor-Setup-x.y.z.exe` (na página de *Releases*). Não precisa de Python nem de nada além dele, e não pede senha de administrador.
 2. **Ative o log do jogo.** Na Steam: Deadlock → Propriedades → Opções de inicialização → adicione `-condebug`.
 3. **Use janela sem bordas.** No jogo, coloque o modo de tela em *Janela sem bordas* (Borderless). Em tela cheia, o overlay não aparece por cima.
-4. **Abra o app** pelo atalho *Deadlock Build Advisor*. Ele acha sozinho a pasta do jogo e a sua conta pelas bibliotecas da Steam. Se faltar alguma coisa (ex.: o `-condebug`), a página mostra um checklist dizendo o que fazer.
+4. **Abra o app** pelo atalho *Deadlock Build Advisor*. Ele acha sozinho a pasta do jogo e a sua conta pelas bibliotecas da Steam. Na primeira vez, a página mostra um passo a passo (achar o Deadlock → ativar o `-condebug` → abrir o jogo) que se marca sozinho conforme você avança.
 5. **Entre numa partida.** O status muda para "Partida encontrada" e a build aparece logo em seguida.
 
 O app abre uma janelinha de controle (abrir a página, mostrar ou esconder o overlay, configurações, sair). Fechar essa janela fecha o app. Se você abrir o atalho de novo com o app já aberto, ele só mostra a página.

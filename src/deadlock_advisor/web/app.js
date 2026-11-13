@@ -5,14 +5,15 @@ let lastState = null;
 
 function heroHtml(h, big = false) {
   const mu = h.matchup;
-  const wr = mu ? `<div class="wr ${mu.wr >= 50 ? "good" : "bad"}">${mu.wr}% WR · ${mu.matches} partidas</div>` : "";
+  // the matchup is *your* hero's win rate against this one, not theirs
+  const wr = mu ? `<div class="wr ${mu.wr >= 50 ? "good" : "bad"}" title="Sua taxa de vitória contra ${esc(h.name)}">sua WR ${mu.wr}%<span class="stats"> · ${mu.matches} partidas</span></div>` : "";
   return `<div class="${big ? "hero-big" : "hero"}"><img src="${esc(h.image)}" alt=""><div><div>${esc(h.name)}</div>${wr}</div></div>`;
 }
 
 function itemHtml(it) {
   const cls = it.lift > 0 ? "pos" : it.lift < 0 ? "neg" : "";
   const sign = it.lift > 0 ? "+" : "";
-  const stats = it.wr != null ? ` · ${it.wr}% <span class="lift ${cls}">(${sign}${it.lift})</span>` : "";
+  const stats = it.wr != null ? `<span class="stats"> · ${it.wr}% <span class="lift ${cls}">(${sign}${it.lift})</span></span>` : "";
   const cost = it.upgrade_cost != null ? `+${it.upgrade_cost}` : `${it.cost}`;
   const title = it.wr != null
     ? `Comprado em média aos ${it.avg_buy_min} min · ${it.matches} partidas · popularidade ${it.pop}%`
@@ -77,45 +78,78 @@ function renderUpdate(u) {
   $("#update-go").classList.toggle("hidden", !(u.can_install && u.state === "ready"));
 }
 
-const SETUP_HELP = {
-  steam: "Steam não encontrada. Instale a Steam ou defina a pasta do Deadlock em Configurações.",
-  game: "Deadlock não encontrado nas bibliotecas da Steam. Defina a pasta em Configurações.",
-  account: "Conta não detectada. Abra a Steam logado na sua conta, ou defina o SteamID3 em Configurações.",
-  condebug: "Adicione <b>-condebug</b> em Steam → Deadlock → Propriedades → Opções de inicialização, e reabra o jogo.",
-  log: "Abra o Deadlock uma vez com <b>-condebug</b> para criar o console.log.",
+// ---------- storage: per-viewer conveniences only; the page works without it ----------
+const LS = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 
-function renderSetup(c) {
-  if (!c) return;
-  const rows = [
-    ["steam", c.steam_found, "Steam encontrada"],
-    ["game", !!c.game_dir, c.game_dir ? `Deadlock em ${esc(c.game_dir)}` : "Pasta do Deadlock"],
-    ["account", !!c.account_id, c.account_id ? `Conta ${c.account_id}` : "Sua conta"],
-    ["condebug", c.condebug !== false, c.condebug === null ? "-condebug (não consegui conferir)" : "-condebug nas opções de inicialização"],
-    ["log", c.console_log, "console.log do jogo"],
-  ];
-  $("#setup").classList.toggle("hidden", !!c.ok);
-  $("#setup-list").innerHTML = rows.map(([k, ok, label]) =>
-    `<li class="${ok ? "ok" : "bad"}"><span>${ok ? "✔" : "✖"}</span><div>${label}${ok ? "" : `<div class="hint">${SETUP_HELP[k]}</div>`}</div></li>`).join("");
+// ---------- first run ----------
+// Steam can take a while to save launch options to disk, so after "Já adicionei" the
+// launch step is proven by the game itself: console.log written after that click.
+function onboarding(c) {
+  const confirmedAt = +(LS.get("condebugConfirmedAt") || 0);
+  const found = !!(c.game_dir && c.account_id);
+  const condebug = found && (c.condebug === true || (c.condebug === null && c.console_log) || confirmedAt > 0);
+  // in order: an old console.log must not tick "open the game" before -condebug is there
+  const launched = condebug && !!c.console_log && (!confirmedAt || (c.console_log_mtime || 0) * 1000 > confirmedAt);
+  const done = !!c.ok || (found && condebug && launched);
+  if (done) LS.set("onboarded", "1");
+  return { found, condebug, launched, done };
+}
+
+let setupTimer = null;
+function renderOnboard(c) {
+  const o = onboarding(c);
+  const show = !o.done && LS.get("onboarded") !== "1";
+  $("#onboard").classList.toggle("hidden", !show);
+  // keep re-checking on its own while the player is busy in Steam
+  if (show && !setupTimer) setupTimer = setInterval(() => fetch("/api/setup").catch(() => {}), 4000);
+  if (!show && setupTimer) { clearInterval(setupTimer); setupTimer = null; }
+  if (!show) return o;
+  $("#find-msg").textContent = o.found
+    ? `Deadlock em ${c.game_dir} · conta ${c.account_id}`
+    : !c.steam_found ? "Não encontrei a Steam. Escolha a pasta do Deadlock manualmente."
+    : !c.game_dir ? "Não encontrei o Deadlock nas bibliotecas da Steam. Escolha a pasta manualmente."
+    : "Não encontrei sua conta. Abra a Steam logado, ou informe o SteamID3 nas configurações.";
+  const steps = [["find", o.found], ["condebug", o.condebug], ["launch", o.launched]];
+  const current = steps.find(([, ok]) => !ok)?.[0];
+  for (const [name, ok] of steps) {
+    const li = document.querySelector(`[data-step="${name}"]`);
+    li.className = ok ? "done" : name === current ? "current" : "todo";
+    li.querySelector(".state").textContent = ok ? "✔ feito" : name === current ? "agora" : "";
+  }
+  return o;
+}
+
+function renderGuide(s, ready) {
+  const show = ready && !s.recommendation;
+  $("#guide").classList.toggle("hidden", !show);
+  if (!show) return;
+  const at = s.status === "loading" ? "loading" : "queue";
+  for (const li of document.querySelectorAll("[data-flow]")) li.classList.toggle("current", li.dataset.flow === at);
 }
 
 function render(s) {
-  renderSetup(s.setup);
+  const o = renderOnboard(s.setup || {});
+  const ready = o.done || LS.get("onboarded") === "1";
+  renderGuide(s, ready);
   renderUpdate(s.update);
   renderSwaps(s);
-  $("#copybar").classList.toggle("hidden", !s.recommendation);
+  const st = $("#status");
+  // the server can still say "setup" when Steam hasn't saved -condebug yet but the game proved it
+  const status = s.status === "setup" && ready ? "idle" : s.status;
+  st.className = `status ${status}`;
+  $("#status-msg").textContent = status !== s.status ? "Aguardando partida…" : (s.message || s.status);
+  const rec = s.recommendation;
+  for (const id of ["#now", "#lane", "#full", "#enemies"]) $(id).classList.toggle("hidden", !rec);
+  renderAbilities(rec?.ability_order);
   const waiting = !!(s.roster && s.roster.lanes_final === false);
   $("#copy-build").disabled = waiting;
-  $("#copy-build").textContent = waiting ? "Aguardando lanes…" : "Copiar para o jogo";
-  if (waiting) $("#copy-msg").textContent = "As lanes ainda podem ser trocadas. O botão libera quando elas travarem.";
-  else if (s.copied) $("#copy-msg").innerHTML = `Copiado “${esc(s.copied.name)}”. As trocas acima comparam com essa build.`;
-  else $("#copy-msg").innerHTML = "No Deadlock: loja → Explorar guias → crie um guia → <b>Colar guia</b>.";
-  const st = $("#status");
-  st.className = `status ${s.status}`;
-  $("#status-msg").textContent = s.message || s.status;
-  const rec = s.recommendation;
-  for (const id of ["#matchup", "#lane", "#full", "#enemies"]) $(id).classList.toggle("hidden", !rec);
-  renderAbilities(rec?.ability_order);
+  $("#copy-build").textContent = waiting ? "Aguardando lanes…" : "Copiar build para o jogo";
+  $("#copy-msg").innerHTML = waiting ? "As lanes ainda podem ser trocadas. O botão libera quando elas travarem."
+    : s.copied ? `Copiado “${esc(s.copied.name)}”. Agora cole no jogo. As trocas sugeridas comparam com essa build.`
+    : "";
   if (!rec) return;
   $("#me").innerHTML = heroHtml(rec.hero, true);
   $("#lane-enemies").innerHTML = rec.lane_enemies.length
@@ -171,7 +205,34 @@ $("#copy-build").addEventListener("click", async () => {
   if (r.error) { $("#copy-msg").textContent = r.error; return; }
   // the app copies on the PC; if that failed (other OS), fall back to this browser
   if (!r.copied && navigator.clipboard) await navigator.clipboard.writeText(r.code).catch(() => {});
-  $("#copy-msg").innerHTML = "Copiado! No Deadlock: loja → Explorar guias → crie um guia → <b>Colar guia</b>.";
+  $("#copy-msg").textContent = "Copiado! Agora cole no jogo: Loja → Explorar guias → Criar guia → Colar guia.";
+});
+
+// ---------- first-run buttons ----------
+$("#copy-condebug").addEventListener("click", async () => {
+  await navigator.clipboard?.writeText("-condebug").catch(() => {});
+  $("#copy-condebug").textContent = "Copiado!";
+  setTimeout(() => { $("#copy-condebug").textContent = "Copiar"; }, 2000);
+});
+$("#condebug-done").addEventListener("click", () => {
+  LS.set("condebugConfirmedAt", String(Date.now()));
+  if (lastState) render(lastState);
+  fetch("/api/setup").catch(() => {});
+});
+for (const b of document.querySelectorAll("[data-open-settings]")) b.addEventListener("click", () => {
+  $("#settings").open = true;
+  $("#settings").scrollIntoView({ behavior: "smooth" });
+});
+
+// ---------- numbers on items: off by default, they made the page feel busy ----------
+function applyStats(on) {
+  document.body.classList.toggle("show-stats", on);
+  $("#show-stats").checked = on;
+}
+applyStats(LS.get("showStats") === "1");
+$("#show-stats").addEventListener("change", (e) => {
+  LS.set("showStats", e.target.checked ? "1" : "0");
+  applyStats(e.target.checked);
 });
 
 $("#update-go").addEventListener("click", async () => {
@@ -183,9 +244,6 @@ $("#update-go").addEventListener("click", async () => {
 // refresh "lida há Xs" between polls
 setInterval(() => { const m = $("#swaps-meta"); if (m && lastState) renderSwaps(lastState); }, 15000);
 
-$("#setup-recheck").addEventListener("click", async () => {
-  try { renderSetup(await (await fetch("/api/setup")).json()); } catch {}
-});
 
 // ---------- settings ----------
 const form = $("#settings-form");

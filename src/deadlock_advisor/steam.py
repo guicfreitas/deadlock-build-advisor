@@ -135,6 +135,10 @@ class SetupCheck:
     launch_options: str | None   # None = could not read them
     condebug: bool | None        # None = unknown
     console_log: bool
+    # when the game last wrote console.log. Steam can be slow to save launch options to
+    # localconfig.vdf, so the first-run screen also accepts "the log was written after the
+    # player said they added -condebug" as proof.
+    console_log_mtime: float | None = None
 
     @property
     def ok(self) -> bool:
@@ -143,12 +147,18 @@ class SetupCheck:
     def as_dict(self) -> dict:
         return {"ok": self.ok, "steam_found": self.steam_found, "game_dir": self.game_dir,
                 "account_id": self.account_id, "launch_options": self.launch_options,
-                "condebug": self.condebug, "console_log": self.console_log}
+                "condebug": self.condebug, "console_log": self.console_log,
+                "console_log_mtime": self.console_log_mtime}
 
 
 def check_setup(game_dir: Path | None, account_id: int | None, root: Path | None = None) -> SetupCheck:
     root = root or steam_root()
     opts = launch_options(account_id, root) if (root and account_id) else None
     condebug = None if opts is None else bool(re.search(r"(^|\s)-condebug(\s|$)", opts))
-    log = bool(game_dir and (Path(game_dir) / "game" / "citadel" / "console.log").exists())
-    return SetupCheck(root is not None, str(game_dir) if game_dir else None, account_id, opts, condebug, log)
+    path = Path(game_dir) / "game" / "citadel" / "console.log" if game_dir else None
+    try:
+        mtime = path.stat().st_mtime if path else None
+    except OSError:
+        mtime = None
+    return SetupCheck(root is not None, str(game_dir) if game_dir else None, account_id, opts, condebug,
+                      mtime is not None, mtime)

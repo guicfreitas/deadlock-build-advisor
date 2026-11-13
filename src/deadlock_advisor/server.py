@@ -44,6 +44,8 @@ def make_handler(advisor: Advisor):
             if path == "/api/setup":  # re-run on demand, e.g. after the user fixes Steam
                 check = advisor.setup_check()
                 advisor.state.update(setup=check)
+                if check["ok"] and advisor.state.snapshot()["status"] == "setup":
+                    advisor.state.update(status="idle", message="Aguardando partida…")
                 return self._json(check)
             if path == "/api/settings":
                 return self._json(config.settings_view(advisor.cfg))

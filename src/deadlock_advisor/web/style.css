@@ -1,23 +1,27 @@
+/* Deadlock mood: warm near-black, parchment cream, condensed serif titles, spaced
+   small caps labels and the ghostly green from the game's art. No Valve logo/branding. */
 :root {
-  --bg: #0e1016; --card: #171a23; --line: #262a36; --fg: #e8e6e3; --dim: #8b8f9a;
-  --acc: #e0b25a; --good: #6fcf7f; --bad: #e06a6a;
+  --bg: #0d0c0a; --card: #171512; --card2: #1e1b17; --line: #2c2823; --fg: #ece4d4; --dim: #8f877a;
+  --acc: #efdcb5; --acc-ink: #1a1610; --ghost: #4fd1a5; --good: #7fc98a; --bad: #d9725f;
   --weapon: #e39a3b; --vitality: #6fbf5a; --spirit: #a77be0;
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+body { margin: 0; background: radial-gradient(1200px 500px at 70% -10%, #13201b 0%, transparent 60%), var(--bg); background-attachment: fixed; color: var(--fg); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
 header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-h1 { margin: 0; font-size: 18px; letter-spacing: .5px; color: var(--acc); }
+h1 { margin: 0; font: 800 24px/1.1 var(--serif); letter-spacing: -.3px; color: var(--fg); }
 .app-version { color: var(--dim); font-size: 12px; font-weight: 400; letter-spacing: 0; }
-h2 { margin: 0 0 10px; font-size: 15px; }
-h2 small, h3 { color: var(--dim); font-weight: 400; font-size: 12px; }
-h3 { margin: 12px 0 6px; text-transform: uppercase; letter-spacing: 1px; }
+h2 { margin: 0 0 10px; font: 700 20px/1.2 var(--serif); letter-spacing: -.2px; }
+h2 small { font: 400 12px "Segoe UI", system-ui, sans-serif; color: var(--dim); letter-spacing: 0; margin-left: 6px; }
+h3 { color: var(--dim); font-weight: 700; font-size: 11px; }
+h3 { margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 3px; }
 main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; }
 .hidden { display: none !important; }
 .status { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
 .status.loading .dot { background: var(--acc); animation: pulse 1s infinite; }
-.status.ready .dot { background: var(--good); }
+.status.ready .dot { background: var(--ghost); box-shadow: 0 0 8px var(--ghost); }
 .status.error .dot, .status.setup .dot { background: var(--bad); }
 @keyframes pulse { 50% { opacity: .3; } }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
@@ -28,46 +32,42 @@ main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14p
 .hero-list { display: flex; flex-wrap: wrap; gap: 14px; }
 .wr { font-size: 12px; } .wr.good { color: var(--good); } .wr.bad { color: var(--bad); }
 .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
-.item { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; background: #1d212c; border-left: 3px solid var(--dim); }
+.item { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 4px; background: var(--card2); border-left: 3px solid var(--dim); }
 .item.weapon { border-color: var(--weapon); } .item.vitality { border-color: var(--vitality); } .item.spirit { border-color: var(--spirit); }
 .item img { width: 38px; height: 38px; object-fit: contain; }
 .item .name { font-weight: 600; font-size: 13px; }
 .item .meta { color: var(--dim); font-size: 11px; }
-.item.component { background: #181b23; border-left-style: dashed; }
+.item.component { background: transparent; border: 1px dashed var(--line); border-left: 3px dashed var(--dim); }
 .item .step { color: var(--dim); font-size: 11px; font-style: italic; }
 .lift.pos { color: var(--good); } .lift.neg { color: var(--bad); }
 .enemy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
-.enemy { background: #1d212c; border-radius: 8px; padding: 8px; }
+.enemy { background: var(--card2); border-radius: 4px; padding: 8px; }
 .enemy .counters { margin-top: 6px; display: grid; gap: 4px; }
-.enemy .counters .item { background: #232836; padding: 4px 6px; }
+.enemy .counters .item { background: #24211c; padding: 4px 6px; }
 .enemy .counters img { width: 26px; height: 26px; }
 summary { cursor: pointer; color: var(--acc); }
 .manual { display: grid; gap: 10px; margin-top: 10px; }
 .hint { color: var(--dim); margin: 0; font-size: 12px; }
 .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
-.pick { cursor: pointer; text-align: center; font-size: 10px; padding: 4px; border-radius: 6px; border: 2px solid transparent; background: #1d212c; }
+.pick { cursor: pointer; text-align: center; font-size: 10px; padding: 4px; border-radius: 4px; border: 2px solid transparent; background: var(--card2); }
 .pick img { width: 40px; height: 40px; display: block; margin: 0 auto 2px; }
 .pick.enemy-sel { border-color: var(--bad); }
-.pick.lane-sel { border-color: var(--acc); background: #2a2416; }
-select, input, button { background: #1d212c; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; }
-button { cursor: pointer; background: var(--acc); color: #1a1408; font-weight: 600; border: 0; }
+.pick.lane-sel { border-color: var(--acc); background: #2a2519; }
+select, input, button { background: var(--card2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; font: inherit; }
+button { cursor: pointer; background: var(--acc); color: var(--acc-ink); font-weight: 600; border: 0; }
+button:hover:not(:disabled) { filter: brightness(1.08); }
 button:disabled { cursor: wait; opacity: .5; }
 label.inline { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 footer { text-align: center; color: var(--dim); font-size: 11px; padding: 16px; }
-.copybar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-.swaps { border-color: var(--acc); background: #1f1b12; }
+.swaps { border-color: var(--ghost); background: #121a16; }
 .swap-list { display: grid; gap: 10px; }
-.swap { background: #262014; border-radius: 8px; padding: 8px 10px; }
+.swap { background: #17221d; border-radius: 4px; padding: 8px 10px; }
 .swap .what { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; }
 .swap .why { color: var(--dim); font-size: 12px; margin-top: 4px; }
-.mini { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 2px; border-radius: 6px; background: #1d212c; border-left: 3px solid var(--dim); }
+.mini { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 2px; border-radius: 4px; background: var(--card2); border-left: 3px solid var(--dim); }
 .mini.weapon { border-color: var(--weapon); } .mini.vitality { border-color: var(--vitality); } .mini.spirit { border-color: var(--spirit); }
 .mini img { width: 24px; height: 24px; object-fit: contain; }
 .mini.drop { opacity: .6; text-decoration: line-through; }
-.setup { border-color: var(--bad); }
-.checklist { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
-.checklist li { display: flex; gap: 8px; align-items: flex-start; }
-.checklist li.ok span { color: var(--good); } .checklist li.bad span { color: var(--bad); }
 .settings { display: grid; gap: 12px; margin-top: 10px; max-width: 560px; }
 .settings label { display: grid; gap: 4px; }
 .settings label.check { display: flex; align-items: center; gap: 8px; }
@@ -81,8 +81,68 @@ code { color: var(--dim); font-size: 11px; word-break: break-all; }
 .ab-name { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ab-name img { width: 24px; height: 24px; border-radius: 4px; }
 .ab-name span { overflow: hidden; text-overflow: ellipsis; }
-.ab-cell { height: 24px; border-radius: 4px; background: #1d212c; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+.ab-cell { height: 24px; border-radius: 3px; background: var(--card2); display: grid; place-items: center; font-size: 11px; font-weight: 700; }
 .ab-cell.on { background: var(--spirit); color: #160c22; }
 .ab-cell.on.t0 { background: #5a4a7a; color: var(--fg); }
-.ab-cell.on.t3 { background: var(--acc); color: #1a1408; }
+.ab-cell.on.t3 { background: var(--acc); color: var(--acc-ink); }
 .update { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; border-color: var(--acc); }
+
+/* ---------- numbers are opt-in ---------- */
+.stats { display: none; }
+body.show-stats .stats { display: inline; }
+.stats-toggle { float: right; font: 400 12px "Segoe UI", system-ui, sans-serif; color: var(--dim); font-weight: 400; display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.read-order { margin: -4px 0 10px; }
+
+/* ---------- collapsible sections ---------- */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary h2 { display: inline; }
+details > summary h2::before { content: "▸ "; color: var(--acc); }
+details[open] > summary h2::before { content: "▾ "; }
+details[open] > summary { margin-bottom: 10px; }
+
+/* ---------- first run ---------- */
+.onboard { border-color: var(--acc); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.steps > li { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.steps > li.current { border-color: var(--acc); background: var(--card2); }
+.steps > li.todo { opacity: .5; }
+.step-head { display: flex; align-items: center; gap: 10px; }
+.step-head .state { margin-left: auto; font-size: 12px; color: var(--dim); }
+.steps > li.done .state { color: var(--ghost); }
+.steps > li.current .state { color: var(--acc); }
+.step-body { display: none; margin: 10px 0 2px 34px; }
+.steps > li.current .step-body { display: grid; gap: 10px; justify-items: start; }
+.step-body p { margin: 0; }
+.num { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--line); color: var(--fg); font-weight: 700; font-size: 12px; }
+.steps > li.done .num { background: var(--ghost); color: #08140f; }
+.steps > li.current .num, .flow li.current .num { background: var(--acc); color: var(--acc-ink); }
+.howto { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.code-copy { display: inline-flex; gap: 8px; align-items: center; margin-left: 6px; }
+code.big { font-size: 15px; color: var(--fg); background: #0b0d12; padding: 3px 8px; border-radius: 4px; }
+.spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid var(--acc); border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -1px; margin-right: 4px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- waiting for a match ---------- */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.flow li { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.flow li.current { border-color: var(--acc); background: var(--card2); }
+.flow small { display: block; color: var(--dim); font-size: 12px; margin-top: 2px; }
+
+/* ---------- in a match: do this first ---------- */
+.now { border-color: var(--acc); }
+.now-actions { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; margin-top: 14px; }
+button.big { font-size: 15px; padding: 10px 18px; }
+.paste-steps { margin: 0; padding-left: 18px; color: var(--dim); font-size: 13px; display: grid; gap: 2px; }
+.paste-steps b { color: var(--fg); }
+#copy-msg:empty { display: none; }
+#copy-msg { margin-top: 10px; }
+
+/* ---------- Deadlock-style labels ---------- */
+.eyebrow { display: block; font-size: 10px; font-weight: 700; letter-spacing: 3.5px; text-transform: uppercase; color: var(--ghost); margin-bottom: 4px; }
+.onboard, .now { border-color: #4a4234; box-shadow: 0 0 0 1px #00000040, 0 10px 30px -12px #000; }
+.now { background: linear-gradient(180deg, #1c1914 0%, var(--card) 100%); }
+.hero-big > div > div:first-child { font: 800 22px/1.1 var(--serif); }
+.vs { font: italic 700 18px var(--serif); color: var(--dim); }
+header { background: #0b0a09cc; backdrop-filter: blur(6px); position: sticky; top: 0; z-index: 5; }
+footer { letter-spacing: .3px; }
