@@ -167,6 +167,10 @@ class Advisor:
             "me": roster.me.to_dict(),
             "game_mode": roster.game_mode,
             "lanes_locked": roster.lanes_locked,
+            # the lane build can still change: copying now would paste the wrong build
+            # (match 136437146: copied 1 s before a lane swap). Final once lanes lock or
+            # the lane watch gives up (some matches never lock every lane).
+            "lanes_final": roster.lanes_locked,
             "players": [p.to_dict() | {"hero": cat.hero_name(p.hero_id)} for p in roster.players],
         }, message=message)
         self.compute(roster.me.hero_id, [p.hero_id for p in roster.enemies],
@@ -182,7 +186,7 @@ class Advisor:
             if key == current["key"]:
                 if new_roster.lanes_locked:
                     snap = self.state.snapshot().get("roster") or {}
-                    self.state.update(roster=snap | {"lanes_locked": True})
+                    self.state.update(roster=snap | {"lanes_locked": True, "lanes_final": True})
                 return
             current["key"] = key
             names = ", ".join(self.catalog.hero_name(h) for h in key[1]) or "desconhecida"
@@ -193,8 +197,20 @@ class Advisor:
             except Exception:  # noqa: BLE001 - keep the previous build on screen
                 traceback.print_exc()
 
-        watch_roster(self.api, match_id, account, on_change,
-                     duration_s=self.lane_watch_s, should_continue=lambda: self._still_current(match_id))
+        try:
+            watch_roster(self.api, match_id, account, on_change,
+                         duration_s=self.lane_watch_s, should_continue=lambda: self._still_current(match_id))
+        finally:
+            if self._still_current(match_id):  # done watching: whatever we have is final
+                snap = self.state.snapshot().get("roster") or {}
+                self.state.update(roster=snap | {"lanes_final": True})
+
+    def copy_blocked(self) -> str | None:
+        """Why the build can't be copied yet, or None."""
+        roster = self.state.snapshot().get("roster")
+        if roster and not roster.get("lanes_final", True):
+            return "Aguardando as lanes travarem: a build de lane ainda pode mudar."
+        return None
 
     # ------------------------------------------------------------ mid-match counters
     def mark_copied(self, build) -> None:

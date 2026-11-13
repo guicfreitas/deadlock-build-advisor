@@ -44,3 +44,27 @@ def test_counters_compare_against_the_copied_build(tmp_path):
     assert live["against_copied"]
     assert live["suggestions"][0]["instead_of"]["name"] == "Fortitude"
     assert adv.state.snapshot()["live_items"]["enemies"][0]["hero"]["name"] == "Abrams"
+
+
+def test_copy_waits_for_final_lanes(tmp_path, monkeypatch):
+    # match 136437146: the build was copied 1 s before a lane swap changed it
+    import deadlock_advisor.app as app_mod
+    adv, _ = _advisor(tmp_path)
+    me = Player(10, 79, 0, 1)
+    roster = Roster(1, [me, Player(20, 6, 1, 1)], me)
+    adv._current_job = 1
+    monkeypatch.setattr(adv, "compute", lambda *a, **k: None)
+    adv._apply_roster(roster, "ok")
+    assert adv.copy_blocked()  # lanes still open
+
+    seen = {}
+    def fake_watch(api, match_id, account, on_change, **kw):
+        seen["blocked_while_watching"] = adv.copy_blocked()
+    monkeypatch.setattr(app_mod, "watch_roster", fake_watch)
+    adv._watch_lanes(1, 10, roster)  # the watch gives up without every lane locked
+    assert seen["blocked_while_watching"] and adv.copy_blocked() is None
+
+
+def test_copy_allowed_without_a_live_roster(tmp_path):
+    adv, _ = _advisor(tmp_path)  # manual mode: no roster in the state
+    assert adv.copy_blocked() is None

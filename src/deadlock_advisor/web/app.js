@@ -104,7 +104,12 @@ function render(s) {
   renderUpdate(s.update);
   renderSwaps(s);
   $("#copybar").classList.toggle("hidden", !s.recommendation);
-  if (s.copied) $("#copy-msg").innerHTML = `Copiado “${esc(s.copied.name)}”. As trocas acima comparam com essa build.`;
+  const waiting = !!(s.roster && s.roster.lanes_final === false);
+  $("#copy-build").disabled = waiting;
+  $("#copy-build").textContent = waiting ? "Aguardando lanes…" : "Copiar para o jogo";
+  if (waiting) $("#copy-msg").textContent = "As lanes ainda podem ser trocadas. O botão libera quando elas travarem.";
+  else if (s.copied) $("#copy-msg").innerHTML = `Copiado “${esc(s.copied.name)}”. As trocas acima comparam com essa build.`;
+  else $("#copy-msg").innerHTML = "No Deadlock: loja → Explorar guias → crie um guia → <b>Colar guia</b>.";
   const st = $("#status");
   st.className = `status ${s.status}`;
   $("#status-msg").textContent = s.message || s.status;

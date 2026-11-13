@@ -51,6 +51,7 @@ summary { cursor: pointer; color: var(--acc); }
 .pick.lane-sel { border-color: var(--acc); background: #2a2416; }
 select, input, button { background: #1d212c; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; }
 button { cursor: pointer; background: var(--acc); color: #1a1408; font-weight: 600; border: 0; }
+button:disabled { cursor: wait; opacity: .5; }
 label.inline { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 footer { text-align: center; color: var(--dim); font-size: 11px; padding: 16px; }
 .copybar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
