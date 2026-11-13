@@ -1,0 +1,56 @@
+# Every push/merge to main: run the tests, build the installer and publish a GitHub
+# Release. The in-app updater (updater.py) follows releases/latest, so installed copies
+# offer the update by themselves. Free on a public repo (Actions minutes are not billed).
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "LICENSE", ".gitignore"]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # create the tag and the release
+
+concurrency:
+  group: release   # two quick merges must not pick the same version
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags, for the version
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest
+          python -m pytest -q -p no:anyio
+
+      - name: Version
+        id: ver
+        run: python packaging/next_version.py >> $env:GITHUB_OUTPUT
+
+      - name: Build tools
+        run: |
+          python -m venv .venv-build
+          .venv-build\Scripts\python -m pip install --disable-pip-version-check pyinstaller==6.22.3
+          choco install innosetup -y --no-progress
+
+      - name: Build installer
+        run: powershell -ExecutionPolicy Bypass -File packaging\build.ps1
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          $setup = "dist\DeadlockBuildAdvisor-Setup-$env:VERSION.exe"
+          gh release create "v$env:VERSION" $setup "$setup.sha256" `
+            --target $env:GITHUB_SHA --title "v$env:VERSION" --generate-notes

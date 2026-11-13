@@ -35,7 +35,12 @@
 - Runs the installer with `/SILENT ... /CURRENTUSER|/ALLUSERS` (keeps the original install scope)
   and quits; the `skipifnotsilent` [Run] entry in installer.iss reopens the app. Never installs
   while `Advisor.in_match`. From source it only notifies.
-- The repo was private on 2026-11-12 (the API returns 404 without login), so updates need public releases.
+- The repo is public (2026-11-12); releases must be public for the updater to see them.
+- Releases are made by CI: `.github/workflows/release.yml` runs on every push to main (tests →
+  `packaging/next_version.py` → `build.ps1` → `gh release create`). Don't tag or upload by hand.
+  The version is `__version__` if it is ahead of every `v*` tag (bump it by hand for a minor/major),
+  otherwise the latest tag's patch + 1. CI doesn't commit the bump back, so `__version__` in the
+  repo can lag behind the latest release.
 
 ## What the game itself exposes (tested in a live match, 2026-11-12)
 - No Game State Integration: no GSI code in any client or engine DLL.
