@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .i18n import t
+
 TIER_WEIGHT = {1: 0.5, 2: 1.0, 3: 2.0, 4: 3.0, 5: 3.0}
 SUGGEST_AT = 3.0      # threat strength needed before suggesting anything (e.g. one T4, or T3 + T2)
 MAX_SUGGESTIONS = 3
@@ -26,7 +28,7 @@ MAX_SOURCES_PER_ENEMY = 2
 @dataclass(frozen=True)
 class Threat:
     key: str
-    label: str                    # pt-BR, shown to the player
+    label: str                    # i18n key (threat.<key>), shown to the player
     triggers: frozenset[str]      # enemy items that create it
     answers: tuple[str, ...]      # items that counter it
     slot: str | None = None       # any enemy item of this slot and tier >= 3 also counts
@@ -37,38 +39,38 @@ def _t(key, label, triggers, answers, slot=None) -> Threat:
 
 
 THREATS = (
-    _t("healing", "cura e roubo de vida",
+    _t("healing", "threat.healing",
        ["upgrade_vampire", "upgrade_health_stealing_magic", "upgrade_lifestrike_gauntlets",
         "upgrade_boxing_glove", "upgrade_healing_booster", "upgrade_resonant_healing",
         "upgrade_health_nova", "upgrade_damage_recycler", "upgrade_siphon_bullets",
         "upgrade_healbuff", "upgrade_surging_power", "upgrade_restorative_locket",
         "upgrade_rescue_beam", "upgrade_medic_bullets", "upgrade_infuser"],
        ["upgrade_healbane", "upgrade_toxic_bullets", "upgrade_rupture", "upgrade_inhibitor"]),
-    _t("weapon", "dano de arma",
+    _t("weapon", "threat.weapon",
        ["upgrade_aprounds", "upgrade_glass_cannon", "upgrade_critshot", "upgrade_fervor",
         "upgrade_ricochet", "upgrade_infinite_rounds", "upgrade_crushing_fists"],
        ["upgrade_regenerating_bullet_shield", "upgrade_return_fire", "upgrade_weapon_shielding",
         "upgrade_improved_bullet_armor", "upgrade_metal_skin", "upgrade_deflecting_armor"],
        slot="weapon"),
-    _t("spirit", "dano espiritual",
+    _t("spirit", "threat.spirit",
        ["upgrade_magic_storm", "upgrade_ultimate_burst", "upgrade_boundless_spirit",
         "upgrade_mystic_reverb", "upgrade_spirit_burn", "upgrade_ethereal_bullets"],
        ["upgrade_spirit_bubble", "upgrade_tech_purge", "upgrade_counterspell",
         "upgrade_absorbing_armor", "upgrade_diviners_kevlar", "upgrade_spellbreaker"],
        slot="spirit"),
-    _t("control", "controle (stun, silêncio, lentidão)",
+    _t("control", "threat.control",
        ["upgrade_target_stun", "upgrade_targeted_silence", "upgrade_containment",
         "upgrade_greater_withering_whip", "upgrade_glitch", "upgrade_aoe_root",
         "upgrade_proc_silence", "upgrade_banshee_slugs", "upgrade_arctic_blast",
         "upgrade_shrink_ray", "upgrade_shivas_bracelet"],
        ["upgrade_debuff_reducer", "upgrade_reduce_debuff_duration", "upgrade_auto_cleanse",
         "upgrade_unstoppable"]),
-    _t("bullet_armor", "resistência a balas",
+    _t("bullet_armor", "threat.bullet_armor",
        ["upgrade_improved_bullet_armor", "upgrade_metal_skin", "upgrade_deflecting_armor",
         "upgrade_regenerating_bullet_shield", "upgrade_juggernaut"],
        ["upgrade_bullet_resist_shredder", "upgrade_bullet_armor_reduction_aura",
         "upgrade_bulletshredimbue"]),
-    _t("spirit_armor", "resistência espiritual",
+    _t("spirit_armor", "threat.spirit_armor",
        ["upgrade_tech_purge", "upgrade_absorbing_armor", "upgrade_diviners_kevlar",
         "upgrade_spirit_bubble", "upgrade_counterspell"],
        ["upgrade_magic_vulnerability", "upgrade_tech_defense_shredders",
@@ -145,9 +147,10 @@ def suggest(enemy_items: dict[int, list[int]], my_items: list[int], planned: lis
             by_enemy.setdefault(hero, []).append(iid)
         by_enemy = {h: [items[i]["name"] for i in sorted(ids, key=lambda i: -items[i].get("item_tier", 0))
                         [:MAX_SOURCES_PER_ENEMY]] for h, ids in by_enemy.items()}
-        reason = "; ".join(f"{hero_names.get(h, h)} comprou {', '.join(n)}" for h, n in by_enemy.items())
+        reason = "; ".join(t("counter.bought", hero=hero_names.get(h, h), items=", ".join(n))
+                           for h, n in by_enemy.items())
         out.append({
-            "threat": hit.threat.key, "threat_label": hit.threat.label,
+            "threat": hit.threat.key, "threat_label": t(hit.threat.label),
             "strength": round(hit.strength, 1),
             "buy": answer, "instead_of": replace,
             "lift": round(lift.get(answer, 0.0), 1),

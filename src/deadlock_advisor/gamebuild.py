@@ -31,6 +31,8 @@ import struct
 import time
 from dataclasses import dataclass, field
 
+from .i18n import t
+
 ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 UNLOCK, UPGRADE = 2, 1          # CurrencyChange.currency_type
 UPGRADE_COSTS = (1, 2, 5)       # ability points per upgrade tier
@@ -234,19 +236,18 @@ def ability_order_changes(sequence: list[int], unlocks: int = 4) -> list[tuple[i
 
 # --------------------------------------------------------------------------- from the engine
 MID_GAME, LATE_GAME = "#Citadel_HeroBuilds_MidGame", "#Citadel_HeroBuilds_LateGame"  # localized by the game
-SITUATIONAL = "Situacional"
 MAX_NAME = 60
 
 
 def _lift_note(item: dict) -> str | None:
     lift = item.get("lift")
-    return f"{lift:+.1f}% de win rate nesta partida" if lift else None
+    return t("gb.lift", lift=f"{lift:+.1f}") if lift else None
 
 
 def from_recommendation(rec: dict, account_id: int | None = None) -> HeroBuild:
     """Turn Recommender.recommend() output into a pasteable Hero Build."""
-    lane_names = " e ".join(e["name"] for e in rec.get("lane_enemies", []))
-    name = f"Advisor: {rec['hero']['name']}" + (f" vs {lane_names}" if lane_names else "")
+    lane_names = t("gb.and").join(e["name"] for e in rec.get("lane_enemies", []))
+    name = f"Advisor: {rec['hero']['name']}" + (t("gb.vs") + lane_names if lane_names else "")
     cats: list[Category] = []
 
     def add(title: str, items: list[dict], description: str = "", optional: bool = False):
@@ -254,8 +255,8 @@ def from_recommendation(rec: dict, account_id: int | None = None) -> HeroBuild:
             cats.append(Category(title, [i["id"] for i in items], description, optional,
                                  {i["id"]: n for i in items if (n := _lift_note(i))}))
 
-    add(f"Lane: contra {lane_names}" if lane_names else "Lane", rec.get("lane_build", []),
-        f"{rec.get('lane_cost', 0)} almas, da esquerda para a direita")
+    add(t("gb.lane_vs", names=lane_names) if lane_names else t("gb.lane"), rec.get("lane_build", []),
+        t("gb.lane_desc", cost=rec.get("lane_cost", 0)))
     full = rec.get("full_build", {})
     add(MID_GAME, full.get("mid", []))
     add(LATE_GAME, full.get("late", []))
@@ -268,14 +269,13 @@ def from_recommendation(rec: dict, account_id: int | None = None) -> HeroBuild:
             if item["id"] not in taken:
                 taken.add(item["id"])
                 counters.append(item)
-                notes[item["id"]] = f"Contra {enemy['name']}: {item['lift']:+.1f}% de win rate"
+                notes[item["id"]] = t("gb.against", name=enemy["name"], lift=f"{item['lift']:+.1f}")
     if counters:
-        cats.append(Category(SITUATIONAL, [i["id"] for i in counters],
-                             "counters contra os inimigos", True, notes))
+        cats.append(Category(t("gb.situational"), [i["id"] for i in counters],
+                             t("gb.counters_desc"), True, notes))
 
     enemies = ", ".join(e["name"] for e in rec.get("enemies", []))
-    desc = ("Gerado pelo Deadlock Build Advisor"
-            + (f" contra {enemies}" if enemies else "") + ".")
+    desc = t("gb.desc_vs", enemies=enemies) if enemies else t("gb.desc") + "."
     order = [s["id"] for s in (rec.get("ability_order") or {}).get("steps", [])]
     return HeroBuild(rec["hero"]["id"], name[:MAX_NAME], desc, cats,
                      ability_order_changes(order) if order else [],

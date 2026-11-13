@@ -12,6 +12,7 @@ from __future__ import annotations
 import tkinter as tk
 
 from .app import Advisor
+from .i18n import t
 
 BG, FG, DIM, ACC, GOOD, BAD = "#11131a", "#e8e6e3", "#8b8f9a", "#e0b25a", "#6fcf7f", "#e06a6a"
 SLOT_COLORS = {"weapon": "#e39a3b", "vitality": "#6fbf5a", "spirit": "#a77be0"}
@@ -96,25 +97,25 @@ class Overlay:
             return
         for sw in ((s.get("live_items") or {}).get("suggestions") or [])[:2]:
             buy, drop = sw["buy"]["name"], (sw.get("instead_of") or {}).get("name")
-            text = f"TROQUE: {buy} em vez de {drop}" if drop else f"COMPRE TAMBÉM: {buy}"
+            text = t("ov.swap", buy=buy, drop=drop) if drop else t("ov.also", buy=buy)
             self._label(text, ACC, 9, True, wraplength=340)
-            self._label(f"  contra {sw['threat_label']}", DIM, 8, wraplength=340)
+            self._label(t("ov.against", threat=sw["threat_label"]), DIM, 8, wraplength=340)
         if rec["lane_enemies"]:
             parts = []
             for e in rec["lane_enemies"]:
                 mu = e.get("matchup")
                 parts.append(f"{e['name']} ({mu['wr']}%)" if mu else e["name"])
-            self._label("Lane vs: " + ", ".join(parts), DIM, 9)
-        self._items(f"LANE (até {rec['settings']['lane_window_min']} min · {rec['lane_cost']} almas)",
+            self._label(t("ov.lane_vs", list=", ".join(parts)), DIM, 9)
+        self._items(t("ov.lane", min=rec["settings"]["lane_window_min"], cost=rec["lane_cost"]),
                     rec["lane_build"])
         fb = rec["full_build"]
-        self._items("MID GAME", fb.get("mid"))
-        self._items("LATE GAME", fb.get("late"))
+        self._items(t("ov.mid"), fb.get("mid"))
+        self._items(t("ov.late"), fb.get("late"))
         order = rec.get("ability_order")
         if order:
-            self._label("HABILIDADES (tecla, ponto a ponto)", ACC, 9, True)
+            self._label(t("ov.abilities"), ACC, 9, True)
             self._label("  " + " ".join(str(st["slot"]) for st in order["steps"]), FG, 10, True)
-        self._label("duplo-clique: recolher · botão direito: esconder", DIM, 8)
+        self._label(t("ov.hint"), DIM, 8)
 
     def _tick(self):
         s = self.advisor.state.snapshot()

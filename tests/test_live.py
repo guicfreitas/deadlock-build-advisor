@@ -73,7 +73,7 @@ def test_watch_roster_reports_lanes_locking_without_a_swap():
 
 
 def test_relay_status_is_translated():
-    from deadlock_advisor.live import status_pt
+    from deadlock_advisor.live import status_text
     msg = "Broadcast relay not ready yet (attempt 4: Valve relay: Broadcast not ready), retrying..."
-    assert "Valve" in status_pt(msg) and "attempt" not in status_pt(msg)
-    assert status_pt("Jogadores encontrados") == "Jogadores encontrados"
+    assert "Valve" in status_text(msg) and "attempt" not in status_text(msg)
+    assert "relay" not in status_text("Spectating match 1 (relay)").lower()

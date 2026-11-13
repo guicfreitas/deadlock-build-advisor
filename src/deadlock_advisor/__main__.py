@@ -45,7 +45,7 @@ def _resolve(advisor, names: str) -> list[int]:
     for n in filter(None, (x.strip() for x in names.split(","))):
         key = n.lower().replace(" ", "")
         if key not in lookup:
-            sys.exit(f"Herói desconhecido: {n}")
+            sys.exit(f"Unknown hero: {n}")
         out.append(lookup[key])
     return out
 
@@ -62,20 +62,22 @@ def main(argv=None) -> None:
 
     from .app import Advisor
     from .config import load_config
+    from .i18n import set_language
     from .server import PortInUse, serve
 
     ap = argparse.ArgumentParser(prog="deadlock_advisor", description="Deadlock Build Advisor")
-    ap.add_argument("--no-overlay", action="store_true", help="só a página web, sem overlay")
-    ap.add_argument("--no-panel", action="store_true", help="sem janela de controle (terminal)")
-    ap.add_argument("--no-browser", action="store_true", help="não abrir o navegador ao iniciar")
+    ap.add_argument("--no-overlay", action="store_true", help="web page only, no overlay")
+    ap.add_argument("--no-panel", action="store_true", help="no control window (terminal)")
+    ap.add_argument("--no-browser", action="store_true", help="do not open the browser on start")
     ap.add_argument("--restarted", action="store_true", help=argparse.SUPPRESS)
-    ap.add_argument("--match-id", type=int, help="forçar uma partida (ex.: testar com partida ativa)")
-    ap.add_argument("--hero", help="modo offline: seu herói (nome)")
-    ap.add_argument("--enemies", default="", help="modo offline: heróis inimigos, separados por vírgula")
-    ap.add_argument("--lane", default="", help="modo offline: inimigos da sua lane")
+    ap.add_argument("--match-id", type=int, help="force a match (e.g. to test with a live match)")
+    ap.add_argument("--hero", help="offline mode: your hero (name)")
+    ap.add_argument("--enemies", default="", help="offline mode: enemy heroes, comma separated")
+    ap.add_argument("--lane", default="", help="offline mode: enemies in your lane")
     args = ap.parse_args(argv)
 
     cfg = load_config()
+    set_language(cfg.language)  # before anything builds a message
     advisor = Advisor(cfg)
 
     if args.hero:  # one-shot CLI mode, prints JSON
@@ -89,7 +91,7 @@ def main(argv=None) -> None:
         httpd = serve(advisor, cfg.port, wait_s=15 if args.restarted else 0)
     except PortInUse:
         # already running (double-clicked the shortcut again): show it instead of failing
-        print(f"Já está rodando em {url}; abrindo a página.")
+        print(f"Already running at {url}; opening the page.")
         webbrowser.open(url)
         return
 
@@ -108,8 +110,8 @@ def main(argv=None) -> None:
                               download_dir=log_dir() / "updates", auto=lambda: cfg.auto_update,
                               busy=lambda: advisor.in_match, quit_app=quit_app)
     advisor.updater.start()
-    print(f"Deadlock Build Advisor rodando em {url}")
-    print(f"Conta: {cfg.account_id or 'NÃO DETECTADA'} · log: {cfg.console_log} · config: {cfg.path}")
+    print(f"Deadlock Build Advisor running at {url}")
+    print(f"Account: {cfg.account_id or 'NOT DETECTED'} · log: {cfg.console_log} · config: {cfg.path}")
     advisor.start_watcher()
     if args.match_id:
         advisor.start_match(args.match_id)

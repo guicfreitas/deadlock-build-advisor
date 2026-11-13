@@ -10,6 +10,7 @@ from pathlib import Path
 from . import counters, steam
 from .api import DeadlockApi
 from .config import Config
+from .i18n import t
 from .engine import Catalog, EngineConfig, Recommender
 from .live import Roster, fetch_roster, snapshot_items, watch_roster
 from .logwatch import ConsoleLogWatcher, LogEvent
@@ -23,7 +24,7 @@ def _lane_key(roster: Roster) -> tuple:
 class AppState:
     def __init__(self):
         self._lock = threading.Lock()
-        self._data = {"status": "idle", "message": "Aguardando partida…", "match_id": None,
+        self._data = {"status": "idle", "message": t("msg.waiting"), "match_id": None,
                       "roster": None, "recommendation": None, "updated_at": time.time()}
         self.version = 0
 
@@ -42,7 +43,7 @@ class Advisor:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.state = AppState()
-        self.api = DeadlockApi(Path(cfg.cache_dir), cfg.api_key)
+        self.api = DeadlockApi(Path(cfg.cache_dir), cfg.api_key)  # names follow i18n's language
         self.engine_cfg = self._engine_config()
         self.on_restart = None   # set by the launcher: relaunch the app (settings that need it)
         self.updater = None      # set by the launcher (updater.Updater)
@@ -71,7 +72,7 @@ class Advisor:
     @property
     def catalog(self) -> Catalog:
         if self._catalog is None:
-            self._catalog = Catalog(self.api.heroes(), self.api.upgrade_items())
+            self._catalog = Catalog(self.api.heroes(), self.api.upgrade_items())  # in the app language
         return self._catalog
 
     @property
@@ -87,16 +88,11 @@ class Advisor:
         check = self.setup_check()
         self.state.update(setup=check)
         if not check["game_dir"]:
-            self.state.update(status="setup", message=(
-                "Não encontrei o Deadlock nas bibliotecas da Steam. Defina game_dir em config.json."))
+            self.state.update(status="setup", message=t("msg.no_game_dir"))
         elif check["condebug"] is False:
-            self.state.update(status="setup", message=(
-                "Falta -condebug nas opções de inicialização do Deadlock na Steam. Adicione e "
-                "reabra o jogo."))
+            self.state.update(status="setup", message=t("msg.no_condebug"))
         elif not log.exists():
-            self.state.update(status="setup", message=(
-                f"console.log não encontrado em {log}. Adicione -condebug nas opções de "
-                "inicialização do Deadlock na Steam."))
+            self.state.update(status="setup", message=t("msg.no_log"))
         self.watcher = ConsoleLogWatcher(log, self.on_log_event)
         self.watcher.start()
 
@@ -108,7 +104,7 @@ class Advisor:
                 self._current_job = None
             snap = self.state.snapshot()
             if snap["status"] != "idle":
-                self.state.update(status="idle", message="Partida encerrada. Aguardando a próxima…")
+                self.state.update(status="idle", message=t("msg.match_ended"))
 
     def start_match(self, match_id: int) -> None:
         with self._job_lock:
@@ -118,7 +114,7 @@ class Advisor:
         self._copied = None
         self.state.update(status="loading", match_id=match_id, roster=None, recommendation=None,
                           live_items=None, copied=None,
-                          message=f"Partida {match_id} encontrada. Lendo heróis dos adversários…")
+                          message=t("msg.match_found", id=match_id))
         threading.Thread(target=self._match_job, args=(match_id,), daemon=True).start()
 
     @property
@@ -133,24 +129,23 @@ class Advisor:
         try:
             account = self.cfg.detect_account_id()
             if not account:
-                raise RuntimeError("account_id não detectado; defina em config.json")
+                raise RuntimeError(t("msg.no_account"))
 
             def status(msg: str):
                 if self._still_current(match_id):
-                    self.state.update(message=f"Partida {match_id}: {msg}")
+                    self.state.update(message=t("msg.match_progress", id=match_id, msg=msg))
 
             roster = fetch_roster(self.api, match_id, account, on_status=status)
             if not self._still_current(match_id):
                 return
             if roster.game_mode == "street_brawl":
-                self.state.update(status="idle", message=(
-                    "Briga de rua: os itens vêm por draft, sem compra. Não há build para recomendar."))
+                self.state.update(status="idle", message=t("msg.street_brawl"))
                 return
-            self._apply_roster(roster, "Heróis identificados. Calculando builds…")
+            self._apply_roster(roster, t("msg.roster_ready"))
         except Exception as e:  # noqa: BLE001 - surface any failure in the UI
             traceback.print_exc()
             if self._still_current(match_id):
-                self.state.update(status="error", message=f"Erro: {e}. Use o modo manual na página.")
+                self.state.update(status="error", message=t("msg.error"))
             return
         # Lanes can still be swapped right after the match starts: keep watching for a few
         # minutes and redo the lane build if the enemy duo in my lane changes.
@@ -189,11 +184,11 @@ class Advisor:
                     self.state.update(roster=snap | {"lanes_locked": True, "lanes_final": True})
                 return
             current["key"] = key
-            names = ", ".join(self.catalog.hero_name(h) for h in key[1]) or "desconhecida"
+            names = ", ".join(self.catalog.hero_name(h) for h in key[1]) or t("msg.lane_unknown")
             try:
-                self._apply_roster(new_roster, f"Lane mudou (agora contra {names}). Recalculando…")
+                self._apply_roster(new_roster, t("msg.lane_changed", names=names))
                 if self._still_current(match_id):
-                    self.state.update(message=f"Lane atualizada: agora contra {names}. Build de lane recalculada.")
+                    self.state.update(message=t("msg.lane_updated", names=names))
             except Exception:  # noqa: BLE001 - keep the previous build on screen
                 traceback.print_exc()
 
@@ -209,7 +204,7 @@ class Advisor:
         """Why the build can't be copied yet, or None."""
         roster = self.state.snapshot().get("roster")
         if roster and not roster.get("lanes_final", True):
-            return "Aguardando as lanes travarem: a build de lane ainda pode mudar."
+            return t("msg.copy_blocked")
         return None
 
     # ------------------------------------------------------------ mid-match counters
@@ -273,15 +268,16 @@ class Advisor:
         rec = self.recommender.recommend(hero_id, enemies, lane_enemies)
         if match_id is None or self._still_current(match_id):
             self.state.update(status="ready", recommendation=rec,
-                              message=f"Build pronta para {rec['hero']['name']}.")
+                              message=t("msg.ready", hero=rec["hero"]["name"]))
         return rec
 
     def compute_manual(self, hero_id: int, enemies: list[int], lane_enemies: list[int]) -> dict:
         with self._job_lock:
             self._current_job = None
-        self.state.update(status="loading", match_id=None, message="Calculando build (modo manual)…")
+        self.state.update(status="loading", match_id=None, message=t("msg.manual_calc"))
         try:
             return self.compute(hero_id, enemies, lane_enemies)
         except Exception as e:  # noqa: BLE001
-            self.state.update(status="error", message=f"Erro: {e}")
+            traceback.print_exc()
+            self.state.update(status="error", message=t("msg.manual_error"))
             raise
