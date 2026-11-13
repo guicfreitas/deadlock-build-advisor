@@ -326,7 +326,23 @@ async function setupFeedback() {
   $("#fb-bug").href = `${about.issues_url}?title=${encodeURIComponent("[Bug] ")}&body=${body()}`;
   $("#fb-idea").href = `${about.issues_url}?title=${encodeURIComponent("[Idea] ")}`;
   if (about.email) { $("#fb-email").href = `mailto:${about.email}?subject=${encodeURIComponent("Deadlock Build Advisor " + about.version)}`; $("#fb-email").classList.remove("hidden"); }
-  if (about.discord) { $("#fb-discord").href = about.discord; $("#fb-discord").classList.remove("hidden"); }
+  if (about.discord) {
+    const d = $("#fb-discord"), isLink = /^https?:\/\//.test(about.discord);
+    d.classList.remove("hidden");
+    if (isLink) d.href = about.discord;
+    else {
+      // a Discord username can't be opened as a link: show it and copy it on click
+      d.textContent = `${T("fb.discord")}: ${about.discord}`;
+      d.removeAttribute("target");
+      d.href = "#";
+      d.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        await navigator.clipboard?.writeText(about.discord).catch(() => {});
+        $("#fb-diag-msg").textContent = T("fb.discord_copied");
+        setTimeout(() => { $("#fb-diag-msg").textContent = ""; }, 4000);
+      });
+    }
+  }
   $("#fb-diag").addEventListener("click", async () => {
     await navigator.clipboard?.writeText(diagnostics(about)).catch(() => {});
     $("#fb-diag-msg").textContent = T("fb.diag_copied");

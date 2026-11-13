@@ -236,5 +236,6 @@
   "gb.lift": "{lift}% de victorias en esta partida",
   "gb.against": "Contra {name}: {lift}% de victorias",
   "gb.desc": "Generado por Deadlock Build Advisor",
-  "gb.desc_vs": "Generado por Deadlock Build Advisor contra {enemies}."
+  "gb.desc_vs": "Generado por Deadlock Build Advisor contra {enemies}.",
+  "fb.discord_copied": "Usuario de Discord copiado."
 }

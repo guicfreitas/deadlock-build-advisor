@@ -236,5 +236,6 @@
   "gb.lift": "本局胜率 {lift}%",
   "gb.against": "对阵 {name}：胜率 {lift}%",
   "gb.desc": "由 Deadlock Build Advisor 生成",
-  "gb.desc_vs": "由 Deadlock Build Advisor 生成，对阵 {enemies}。"
+  "gb.desc_vs": "由 Deadlock Build Advisor 生成，对阵 {enemies}。",
+  "fb.discord_copied": "已复制 Discord 用户名。"
 }

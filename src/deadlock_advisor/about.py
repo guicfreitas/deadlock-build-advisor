@@ -10,7 +10,7 @@ import sys
 from . import __version__, i18n
 
 CONTACT_EMAIL = ""        # e.g. "you@example.com": shows an "Email me" button
-CONTACT_DISCORD = ""      # an invite or profile link: shows a "Discord" button
+CONTACT_DISCORD = "_guicf"  # a username (button copies it) or an invite/profile link (button opens it)
 # Support links, shown in order: (button label, URL). The app stays free either way:
 # no ads and no locked features.
 SUPPORT_LINKS: list[tuple[str, str]] = [

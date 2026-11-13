@@ -236,5 +236,6 @@
   "gb.lift": "{lift}% побед в этом матче",
   "gb.against": "Против {name}: {lift}% побед",
   "gb.desc": "Создано Deadlock Build Advisor",
-  "gb.desc_vs": "Создано Deadlock Build Advisor против {enemies}."
+  "gb.desc_vs": "Создано Deadlock Build Advisor против {enemies}.",
+  "fb.discord_copied": "Имя пользователя Discord скопировано."
 }
