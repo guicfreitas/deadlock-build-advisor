@@ -19,6 +19,7 @@ if (-not (Test-Path $py)) { throw "Falta o ambiente de build: python -m venv .ve
     --paths "$root\src" `
     --add-data "$root\src\deadlock_advisor\web;deadlock_advisor\web" `
     --add-data "$root\src\deadlock_advisor\locales;deadlock_advisor\locales" `
+    --add-data "$root\src\deadlock_advisor\sounds;deadlock_advisor\sounds" `
     --distpath dist --workpath build\pyinstaller --specpath build `
     "$root\packaging\launcher.py"
 if ($LASTEXITCODE) { throw "PyInstaller falhou" }
