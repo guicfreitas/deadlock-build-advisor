@@ -25,7 +25,9 @@ class AppState:
     def __init__(self):
         self._lock = threading.Lock()
         self._data = {"status": "idle", "message": t("msg.waiting"), "match_id": None,
-                      "roster": None, "recommendation": None, "updated_at": time.time()}
+                      "roster": None, "recommendation": None, "updated_at": time.time(),
+                      # changes on every start: an open page that sees a new one reloads itself
+                      "boot": time.time()}
         self.version = 0
 
     def update(self, **kw):

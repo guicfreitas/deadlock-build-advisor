@@ -94,3 +94,14 @@ def test_ready_beep_once_per_match_when_copyable(monkeypatch):
     adv._announced = None
     adv._announce_if_copyable(7)
     assert played == ["ready"]                         # setting off: silent
+
+
+def test_state_has_a_boot_id_that_changes_per_run():
+    import time
+    from deadlock_advisor.app import AppState
+    a = AppState()
+    time.sleep(0.01)
+    b = AppState()
+    assert a.snapshot()["boot"] != b.snapshot()["boot"]
+    a.update(status="ready")
+    assert a.snapshot()["boot"] == a._data["boot"]   # updates never change it
