@@ -47,3 +47,13 @@ def test_sound_never_raises(monkeypatch):
     sound.play("nonexistent")
     monkeypatch.setattr(sound.sys, "platform", "linux")
     sound.play("ready")
+
+
+def test_bundled_sound_is_a_wav():
+    import wave, io
+    for kind in sound.CHIMES:
+        data = sound.wav_bytes(kind)
+        assert data[:4] == b"RIFF"
+        with wave.open(io.BytesIO(data)) as w:
+            assert 0.1 < w.getnframes() / w.getframerate() < 3   # short enough for an alert
+        assert sound.render(kind)[:4] == b"RIFF"                 # the fallback still works

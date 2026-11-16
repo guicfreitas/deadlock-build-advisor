@@ -76,7 +76,8 @@
   keep that when changing the scoring.
 
 ## Sound and respawn timers (2026-11-16)
-- `sound.py` (winsound, Windows only, never raises). "Build ready" beeps once per match, only when the
+- `sound.py` (winsound, Windows only, never raises) plays `sounds/notify.wav` (Kenney Interface Sounds
+  confirmation_001, CC0; keep `LICENSE-kenney.txt`; packaged by build.ps1 and pyproject), synthesized chime as fallback. "Build ready" beeps once per match, only when the
   build can be copied (`lanes_final`): `Advisor._announce_if_copyable`. Settings `sound` and
   `respawn_alerts` (live, no restart).
 - The match clock starts at the console.log line `OnGameStateChanged: GameInProgress (7)` (verified
