@@ -2,6 +2,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 let lastVersion = -1;
 let lastState = null;
+let bootId = null; // which run of the app this page was loaded from
 
 // ---------- translations: strings come from the app (/api/i18n), never hard-coded here ----------
 let STR = {}, LANG = "en";
@@ -208,6 +209,10 @@ function render(s) {
 async function poll() {
   try {
     const s = await (await fetch("/api/state")).json();
+    // the app restarted (an update, or "restart" in the settings): this page is from the old
+    // version, so load the new one instead of keeping stale scripts
+    if (bootId !== null && s.boot !== bootId) { location.reload(); return; }
+    bootId = s.boot;
     if (s.version !== lastVersion) { lastVersion = s.version; lastState = s; render(s); }
   } catch { $("#status-msg").textContent = T("status.disconnected"); }
   setTimeout(poll, 1500);
