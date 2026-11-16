@@ -75,6 +75,18 @@
 - Item stats are confounded by the matchup itself. `engine.score_items` subtracts the context offset;
   keep that when changing the scoring.
 
+## Sound and respawn timers (2026-11-16)
+- `sound.py` (winsound, Windows only, never raises). "Build ready" beeps once per match, only when the
+  build can be copied (`lanes_final`): `Advisor._announce_if_copyable`. Settings `sound` and
+  `respawn_alerts` (live, no restart).
+- The match clock starts at the console.log line `OnGameStateChanged: GameInProgress (7)` (verified
+  2026-11-16: 16:40:09, build ready 9 s later). The hideout logs the same line, so it only counts after
+  "match found" (`logwatch.replay`). The line's own timestamp is used, so opening the app mid-match works.
+- `timers.py` holds the table (small camps 2:00 once; crates 3:00 every 3:00; medium 5:00 / 4:50; large
+  8:00 / 5:35; vault 8:00 / 5:00; source https://deadlock.wiki/Timers, which says it may be outdated).
+  Only the first spawn is exact: a respawn counts from the clear, which we can't see, so repeats assume
+  "cleared at spawn". The server beeps 15 s before; the page counts down from `state.timers` (epoch).
+
 ## In-game build share codes (verified in game, 2026-11-12)
 - Hero Builds editor has "Copiar para a área de transferência" / "Colar guia": the text is
   base64(zstd(protobuf CMsgHeroBuild)). `gamebuild.py` writes it with uncompressed zstd blocks

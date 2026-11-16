@@ -68,3 +68,29 @@ def test_copy_waits_for_final_lanes(tmp_path, monkeypatch):
 def test_copy_allowed_without_a_live_roster(tmp_path):
     adv, _ = _advisor(tmp_path)  # manual mode: no roster in the state
     assert adv.copy_blocked() is None
+
+
+def test_ready_beep_once_per_match_when_copyable(monkeypatch):
+    from deadlock_advisor import sound
+    from deadlock_advisor.app import Advisor
+    from deadlock_advisor.config import Config
+    played = []
+    monkeypatch.setattr(sound, "play", played.append)
+    cfg = Config()
+    adv = Advisor.__new__(Advisor)
+    adv.cfg, adv._announced, adv._current_job = cfg, None, 7
+    from deadlock_advisor.app import AppState
+    adv.state = AppState()
+    adv._announce_if_copyable(7)                       # nothing ready yet
+    assert played == []
+    adv.state.update(status="ready", recommendation={"x": 1}, roster={"lanes_final": False})
+    adv._announce_if_copyable(7)                       # lanes still open: not copyable
+    assert played == []
+    adv.state.update(roster={"lanes_final": True})
+    adv._announce_if_copyable(7)
+    adv._announce_if_copyable(7)                       # only once
+    assert played == ["ready"]
+    cfg.sound = False
+    adv._announced = None
+    adv._announce_if_copyable(7)
+    assert played == ["ready"]                         # setting off: silent

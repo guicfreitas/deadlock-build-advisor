@@ -24,6 +24,7 @@ And during the match:
 
 - 📋 **Copy to the game**: one click copies the build in Deadlock's own build-sharing format. In the game, open *Browse builds*, create a build and click **Paste build**: categories, items and notes come in ready, and Quick Buy follows the build.
 - 🔄 **Swap to counter**: every minute the app reads what the enemies bought and, when a threat shows up (lots of healing, weapon damage, spirit damage, crowd control, resistances), suggests "buy X instead of Y" for the build you pasted, and tells you who bought what.
+- 🔔 **Sound and respawn timers**: a beep when the build is ready to copy, and a countdown (with a beep 15 s before) for jungle camps and crates, counted from the game clock. Both can be turned off in the settings. Respawns assume the camp was cleared when it spawned.
 
 Recommendations show up in an **always-on-top overlay** and on a **local web page** (`http://localhost:8787`) that you can open on a second monitor or your phone.
 

@@ -162,3 +162,7 @@ footer p { margin: 2px 0; }
 /* why an item is there, and the "sell after the lane" hint */
 .item .why { color: var(--ghost); font-size: 11px; }
 .item .sell { color: var(--weapon); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.timer-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.timer { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-radius: 4px; background: var(--card2); border-left: 3px solid var(--dim); }
+.timer b { font-variant-numeric: tabular-nums; font-size: 16px; }
+.timer.soon { border-color: var(--ghost); background: #17261f; animation: pulse 1s infinite; }
