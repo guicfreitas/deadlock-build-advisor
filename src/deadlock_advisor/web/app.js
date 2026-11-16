@@ -75,6 +75,22 @@ function renderSwaps(s) {
   }).join("");
 }
 
+// ---------- respawn timers: the server sends the next spawns (epoch seconds), we count down ----------
+const SOON_S = 15; // same warning window as timers.LEAD_S
+const clock = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+function renderTimers(s) {
+  const list = s?.timers || [];
+  $("#timers").classList.toggle("hidden", !list.length);
+  if (!list.length) return;
+  const now = Date.now() / 1000;
+  $("#timer-list").innerHTML = list.map((x) => {
+    const left = Math.max(0, Math.ceil(x.at - now));
+    return `<div class="timer${left <= SOON_S ? " soon" : ""}"><span>${esc(T("timer." + x.key))}</span>
+      <b>${left ? clock(left) : esc(T("timers.now"))}</b></div>`;
+  }).join("");
+}
+setInterval(() => { if (lastState) renderTimers(lastState); }, 1000);
+
 function renderAbilities(order) {
   $("#abilities").classList.toggle("hidden", !order);
   if (!order) return;
@@ -160,6 +176,7 @@ function render(s) {
   renderGuide(s, ready);
   renderUpdate(s.update);
   renderSwaps(s);
+  renderTimers(s);
   const st = $("#status");
   // the server can still say "setup" when Steam hasn't saved -condebug yet but the game proved it
   const status = s.status === "setup" && ready ? "idle" : s.status;

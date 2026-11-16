@@ -7,7 +7,7 @@ import traceback
 from dataclasses import fields
 from pathlib import Path
 
-from . import counters, steam
+from . import counters, sound, steam, timers
 from .api import DeadlockApi
 from .config import Config
 from .i18n import t
@@ -55,6 +55,8 @@ class Advisor:
         self.items_every_s = 60  # how often to sample everyone's items during the match
         self._roster: Roster | None = None
         self._copied: list[int] | None = None   # item order of the build the player pasted in game
+        self._announced: int | None = None      # match whose "build ready" beep already played
+        self._game_start: float | None = None   # epoch of the match clock's 0:00 (from console.log)
 
     def _engine_config(self) -> EngineConfig:
         ecfg = EngineConfig()
@@ -102,9 +104,13 @@ class Advisor:
     def on_log_event(self, ev: LogEvent) -> None:
         if ev.kind == "match_found" and ev.match_id:
             self.start_match(ev.match_id)
+        elif ev.kind == "game_started" and self.in_match:
+            self.on_game_start(ev.ts or time.time())
         elif ev.kind in ("match_ended", "game_closed"):
             with self._job_lock:
                 self._current_job = None
+            self._game_start = None
+            self.state.update(game_start=None, timers=None)
             snap = self.state.snapshot()
             if snap["status"] != "idle":
                 self.state.update(status="idle", message=t("msg.match_ended"))
@@ -115,8 +121,9 @@ class Advisor:
                 return
             self._current_job = match_id
         self._copied = None
+        self._game_start = None
         self.state.update(status="loading", match_id=match_id, roster=None, recommendation=None,
-                          live_items=None, copied=None,
+                          live_items=None, copied=None, game_start=None, timers=None,
                           message=t("msg.match_found", id=match_id))
         threading.Thread(target=self._match_job, args=(match_id,), daemon=True).start()
 
@@ -127,6 +134,44 @@ class Advisor:
 
     def _still_current(self, match_id: int) -> bool:
         return self._current_job == match_id
+
+    # ------------------------------------------------------------ sound and respawn timers
+    def _announce_if_copyable(self, match_id: int | None) -> None:
+        """Beep once per match when the build is ready AND can be copied (lanes final)."""
+        if match_id is None or self._announced == match_id or not self._still_current(match_id):
+            return
+        snap = self.state.snapshot()
+        roster = snap.get("roster") or {}
+        if snap["status"] == "ready" and snap.get("recommendation") and roster.get("lanes_final"):
+            self._announced = match_id
+            if self.cfg.sound:
+                sound.play("ready")
+
+    def on_game_start(self, start: float) -> None:
+        """The match clock hit 0:00 at `start`: show the respawn timers and warn before each."""
+        match_id = self._current_job
+        if match_id is None or self._game_start == start:
+            return
+        self._game_start = start
+        self.state.update(game_start=start)
+        threading.Thread(target=self._clock_watch, args=(match_id, start),
+                         daemon=True, name="match-clock").start()
+
+    def _clock_watch(self, match_id: int, start: float) -> None:
+        fired: set[tuple[int, str]] = set()
+        shown = None
+        while self._still_current(match_id) and self._game_start == start:
+            elapsed = time.time() - start
+            nxt = timers.upcoming(elapsed, 5)
+            if nxt != shown:  # the page counts down on its own; only the list changes
+                shown = nxt
+                self.state.update(timers=[{"key": k, "at": start + at} for at, k in nxt])
+            for event in timers.due(elapsed):
+                if event not in fired:
+                    fired.add(event)
+                    if self.cfg.sound and self.cfg.respawn_alerts:
+                        sound.play("respawn")
+            time.sleep(1)
 
     def _match_job(self, match_id: int) -> None:
         try:
@@ -145,6 +190,7 @@ class Advisor:
                 self.state.update(status="idle", message=t("msg.street_brawl"))
                 return
             self._apply_roster(roster, t("msg.roster_ready"))
+            self._announce_if_copyable(match_id)
         except Exception as e:  # noqa: BLE001 - surface any failure in the UI
             traceback.print_exc()
             if self._still_current(match_id):
@@ -185,6 +231,7 @@ class Advisor:
                 if new_roster.lanes_locked:
                     snap = self.state.snapshot().get("roster") or {}
                     self.state.update(roster=snap | {"lanes_locked": True, "lanes_final": True})
+                    self._announce_if_copyable(match_id)
                 return
             current["key"] = key
             names = ", ".join(self.catalog.hero_name(h) for h in key[1]) or t("msg.lane_unknown")
@@ -202,6 +249,7 @@ class Advisor:
             if self._still_current(match_id):  # done watching: whatever we have is final
                 snap = self.state.snapshot().get("roster") or {}
                 self.state.update(roster=snap | {"lanes_final": True})
+                self._announce_if_copyable(match_id)
 
     def copy_blocked(self) -> str | None:
         """Why the build can't be copied yet, or None."""

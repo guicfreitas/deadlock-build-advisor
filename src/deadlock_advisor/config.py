@@ -76,6 +76,8 @@ EDITABLE = {
     "overlay": (bool, False),
     "overlay_alpha": (_num(0.3, 1.0, float), False),
     "auto_update": (bool, True),
+    "sound": (bool, True),
+    "respawn_alerts": (bool, True),
     "language": (_language, False),
     "engine.lane_window_s": (_num(300, 900), True),
     "engine.lane_budget": (_num(1000, 12000), True),
@@ -92,6 +94,8 @@ class Config:
     overlay: bool = True
     overlay_alpha: float = 0.88
     auto_update: bool = True           # install new releases by itself (out of a match)
+    sound: bool = True                 # beep when the build is ready to copy
+    respawn_alerts: bool = True        # beep shortly before jungle camps / crates respawn (needs sound)
     language: str = ""                 # UI language code ("" = follow the system language)
     update_repo: str = "guicfreitas/deadlock-build-advisor"  # GitHub repo whose releases we follow
     cache_dir: str = str(Path(os.environ.get("LOCALAPPDATA", Path.home())) / "deadlock-advisor" / "cache")
@@ -177,7 +181,8 @@ def settings_view(cfg: Config) -> dict:
     """Current values for the settings screen: what the user set, and what is in effect."""
     effective = {"game_dir": cfg.game_dir, "account_id": cfg.account_id, "api_key": cfg.api_key,
                  "port": cfg.port, "overlay": cfg.overlay, "overlay_alpha": cfg.overlay_alpha,
-                 "auto_update": cfg.auto_update, "language": cfg.language,
+                 "auto_update": cfg.auto_update, "sound": cfg.sound,
+                 "respawn_alerts": cfg.respawn_alerts, "language": cfg.language,
                  "engine": _effective_engine(cfg)}
     return {"path": str(cfg.path),
             "user": {k: _get_path(cfg.user, k) for k in EDITABLE},
@@ -224,8 +229,8 @@ def update_settings(cfg: Config, changes: dict) -> dict:
             cfg.engine = json.loads(json.dumps(user.get("engine", {})))
         elif top == "api_key":
             cfg.api_key = value or os.environ.get("DEADLOCK_API_KEY")
-        elif top == "auto_update":
-            cfg.auto_update = value is not False
+        elif top in ("auto_update", "sound", "respawn_alerts"):
+            setattr(cfg, top, value is not False)
         elif top == "account_id":
             cfg.account_id = value
             cfg.detect_account_id()
@@ -233,7 +238,7 @@ def update_settings(cfg: Config, changes: dict) -> dict:
 
 
 DEFAULTS = {"game_dir": "", "account_id": None, "api_key": None, "port": 8787, "overlay": True,
-            "overlay_alpha": 0.88, "auto_update": True, "language": "",
+            "overlay_alpha": 0.88, "auto_update": True, "sound": True, "respawn_alerts": True, "language": "",
             "engine": {"lane_window_s": 600, "lane_budget": 5600, "filters": {"min_average_badge": 71}}}
 
 
